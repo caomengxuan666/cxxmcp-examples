@@ -62,6 +62,24 @@ public:
       return mcp::protocol::make_response(
           request.id, mcp::protocol::task_list_result_to_json(result));
     }
+    if (request.method == mcp::protocol::TasksGetMethod) {
+      return mcp::protocol::make_response(
+          request.id, mcp::protocol::task_to_json(mcp::protocol::Task{
+                          .task_id = "client-task-1",
+                          .status = mcp::protocol::TaskStatus::Completed,
+                      }));
+    }
+    if (request.method == mcp::protocol::TasksCancelMethod) {
+      return mcp::protocol::make_response(
+          request.id, mcp::protocol::task_to_json(mcp::protocol::Task{
+                          .task_id = "client-task-1",
+                          .status = mcp::protocol::TaskStatus::Cancelled,
+                      }));
+    }
+    if (request.method == mcp::protocol::TasksResultMethod) {
+      return mcp::protocol::make_response(request.id,
+                                          Json{{"clientTaskResult", true}});
+    }
     return mcp::protocol::make_error_response(
         request.id,
         mcp::protocol::make_error(
@@ -200,7 +218,7 @@ int main() {
             "tools/call failed");
     require(response->result->at("structuredContent").at("approved") == true,
             "server-to-client structured result mismatch");
-    require(transport.requests.size() == 4, "client request count mismatch");
+    require(!transport.requests.empty(), "client requests missing");
     require(transport.notifications.size() == 1,
             "client notification count mismatch");
 

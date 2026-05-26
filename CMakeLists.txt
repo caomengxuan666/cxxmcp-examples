@@ -84,6 +84,32 @@ cxxmcp_example(cxxmcp_native_server_transport_matrix)
 
 add_executable(cxxmcp_rich_content_cancellation_matrix src/rich_content_cancellation_matrix.cpp)
 cxxmcp_example(cxxmcp_rich_content_cancellation_matrix)
+add_executable(cxxmcp_direct_http_legacy_sse_matrix src/direct_http_legacy_sse_matrix.cpp)
+cxxmcp_example(cxxmcp_direct_http_legacy_sse_matrix)
+
+add_executable(cxxmcp_pagination_cursor_matrix src/pagination_cursor_matrix.cpp)
+cxxmcp_example(cxxmcp_pagination_cursor_matrix)
+
+add_executable(cxxmcp_client_subscription_helper_matrix src/client_subscription_helper_matrix.cpp)
+cxxmcp_example(cxxmcp_client_subscription_helper_matrix)
+
+add_executable(cxxmcp_task_cancel_matrix src/task_cancel_matrix.cpp)
+cxxmcp_example(cxxmcp_task_cancel_matrix)
+
+add_executable(cxxmcp_transport_adapter_matrix src/transport_adapter_matrix.cpp)
+cxxmcp_example(cxxmcp_transport_adapter_matrix)
+
+if(TARGET cxxmcp::gateway OR TARGET mcp_gateway)
+    add_executable(cxxmcp_runtime_services_matrix src/runtime_services_matrix.cpp)
+    target_compile_features(cxxmcp_runtime_services_matrix PRIVATE cxx_std_20)
+    if(TARGET cxxmcp::gateway)
+        target_link_libraries(cxxmcp_runtime_services_matrix
+            PRIVATE cxxmcp::gateway cxxmcp::runtime cxxmcp::sdk)
+    else()
+        target_link_libraries(cxxmcp_runtime_services_matrix
+            PRIVATE mcp_gateway mcp_app cxxmcp::sdk)
+    endif()
+endif()
 add_executable(cxxmcp_workspace_server src/workspace_server.cpp)
 cxxmcp_example(cxxmcp_workspace_server)
 
@@ -105,11 +131,16 @@ add_test(NAME cxxmcp_server_to_client_context_matrix COMMAND cxxmcp_server_to_cl
 add_test(NAME cxxmcp_handler_interface_matrix COMMAND cxxmcp_handler_interface_matrix)
 add_test(NAME cxxmcp_native_server_transport_matrix COMMAND cxxmcp_native_server_transport_matrix)
 add_test(NAME cxxmcp_rich_content_cancellation_matrix COMMAND cxxmcp_rich_content_cancellation_matrix)
+add_test(NAME cxxmcp_direct_http_legacy_sse_matrix COMMAND cxxmcp_direct_http_legacy_sse_matrix)
+add_test(NAME cxxmcp_pagination_cursor_matrix COMMAND cxxmcp_pagination_cursor_matrix)
+add_test(NAME cxxmcp_client_subscription_helper_matrix COMMAND cxxmcp_client_subscription_helper_matrix)
+add_test(NAME cxxmcp_task_cancel_matrix COMMAND cxxmcp_task_cancel_matrix)
+add_test(NAME cxxmcp_transport_adapter_matrix COMMAND cxxmcp_transport_adapter_matrix)
+if(TARGET cxxmcp_runtime_services_matrix)
+    add_test(NAME cxxmcp_runtime_services_matrix COMMAND cxxmcp_runtime_services_matrix)
+endif()
 if(TARGET cxxmcp_http_gateway_runtime_matrix)
     add_test(NAME cxxmcp_http_gateway_runtime_matrix COMMAND cxxmcp_http_gateway_runtime_matrix)
 endif()
 set_tests_properties(cxxmcp_sdk_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
-
-
-
