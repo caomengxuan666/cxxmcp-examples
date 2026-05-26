@@ -16,15 +16,15 @@ void require(bool condition, std::string_view message) {
 }
 
 class InteractiveClientTransport final : public mcp::server::Transport {
-public:
-  mcp::core::Result<mcp::core::Unit>
-  start(mcp::server::RequestHandler,
-        mcp::server::NotificationHandler = {}) override {
+ public:
+  mcp::core::Result<mcp::core::Unit> start(
+      mcp::server::RequestHandler,
+      mcp::server::NotificationHandler = {}) override {
     return mcp::core::Unit{};
   }
 
-  mcp::core::Result<mcp::protocol::JsonRpcResponse>
-  send_request(const mcp::protocol::JsonRpcRequest &request) override {
+  mcp::core::Result<mcp::protocol::JsonRpcResponse> send_request(
+      const mcp::protocol::JsonRpcRequest& request) override {
     requests.push_back(request.method);
     if (request.method == mcp::protocol::RootsListMethod) {
       mcp::protocol::RootsListResult result;
@@ -89,7 +89,7 @@ public:
 
   mcp::core::Result<mcp::protocol::JsonRpcResponse> send_request_to_session(
       std::string_view session_id,
-      const mcp::protocol::JsonRpcRequest &request) override {
+      const mcp::protocol::JsonRpcRequest& request) override {
     require(session_id == "interactive-session", "session route mismatch");
     return send_request(request);
   }
@@ -104,18 +104,22 @@ public:
     capabilities.sampling.tools = true;
     capabilities.elicitation.form = true;
     capabilities.elicitation.url = true;
+    capabilities.tasks = mcp::protocol::TaskCapabilities{
+        .list = true,
+        .cancel = true,
+    };
     return capabilities;
   }
 
   mcp::core::Result<mcp::core::Unit> send_notification(
-      const mcp::protocol::JsonRpcNotification &notification) override {
+      const mcp::protocol::JsonRpcNotification& notification) override {
     notifications.push_back(notification.method);
     return mcp::core::Unit{};
   }
 
   mcp::core::Result<mcp::core::Unit> send_notification_to_session(
       std::string_view session_id,
-      const mcp::protocol::JsonRpcNotification &notification) override {
+      const mcp::protocol::JsonRpcNotification& notification) override {
     require(session_id == "interactive-session",
             "notification session mismatch");
     return send_notification(notification);
@@ -130,7 +134,7 @@ public:
   std::vector<std::string> notifications;
 };
 
-} // namespace
+}  // namespace
 
 int main() {
   try {
@@ -140,7 +144,7 @@ int main() {
             .version("0.1.0")
             .tool(
                 mcp::server::tool<Json, Json>("client.roundtrip")
-                    .handler([](const mcp::server::ToolContext &context) {
+                    .handler([](const mcp::server::ToolContext& context) {
                       const auto client = context.client();
                       require(client.available(), "client peer unavailable");
                       require(client.supports_roots(), "roots not advertised");
@@ -182,9 +186,9 @@ int main() {
                               "client elicitation failed");
 
                       const auto client_tasks = client.list_tasks();
-                      require(client_tasks.has_value() &&
-                                  client_tasks->size() == 1,
-                              "client task list failed");
+                      require(
+                          client_tasks.has_value() && client_tasks->size() == 1,
+                          "client task list failed");
                       require(client
                                   .notify_elicitation_complete(
                                       "elicitation-context-1")
@@ -214,8 +218,18 @@ int main() {
             .id = std::int64_t{1},
         },
         context);
-    require(response.has_value() && response->result.has_value(),
-            "tools/call failed");
+    if (!response.has_value()) {
+      throw std::runtime_error("tools/call dispatch failed: " +
+                               response.error().message);
+    }
+    if (response->error.has_value()) {
+      std::string detail = response->error->message;
+      if (response->error->data.has_value()) {
+        detail += ": " + response->error->data->dump();
+      }
+      throw std::runtime_error("tools/call failed: " + detail);
+    }
+    require(response->result.has_value(), "tools/call result missing");
     require(response->result->at("structuredContent").at("approved") == true,
             "server-to-client structured result mismatch");
     require(!transport.requests.empty(), "client requests missing");
@@ -224,7 +238,7 @@ int main() {
 
     std::cout << "server-to-client context matrix passed\n";
     return 0;
-  } catch (const std::exception &ex) {
+  } catch (const std::exception& ex) {
     std::cerr << "server-to-client context matrix failed: " << ex.what()
               << '\n';
     return 1;

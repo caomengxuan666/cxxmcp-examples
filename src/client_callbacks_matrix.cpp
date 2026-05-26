@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 
+#include "cxxmcp/cancellation.hpp"
 #include "cxxmcp/client.hpp"
 #include "cxxmcp/peer.hpp"
 
@@ -18,32 +19,32 @@ void require(bool condition, std::string_view message) {
 }
 
 class NoopTransport final : public mcp::client::Transport {
-public:
-  mcp::core::Result<mcp::protocol::JsonRpcResponse>
-  send(const mcp::protocol::JsonRpcRequest &request) override {
+ public:
+  mcp::core::Result<mcp::protocol::JsonRpcResponse> send(
+      const mcp::protocol::JsonRpcRequest& request) override {
     return mcp::protocol::make_response(request.id, Json::object());
   }
 
-  mcp::core::Result<mcp::core::Unit>
-  send_notification(const mcp::protocol::JsonRpcNotification &) override {
+  mcp::core::Result<mcp::core::Unit> send_notification(
+      const mcp::protocol::JsonRpcNotification&) override {
     return mcp::core::Unit{};
   }
 };
 
-const mcp::protocol::JsonRpcResponse &response_from(
-    const mcp::core::Result<std::optional<mcp::protocol::JsonRpcMessage>>
-        &dispatched,
+const mcp::protocol::JsonRpcResponse& response_from(
+    const mcp::core::Result<std::optional<mcp::protocol::JsonRpcMessage>>&
+        dispatched,
     std::string_view label) {
   require(dispatched.has_value(), label);
   require(dispatched->has_value(), label);
-  const auto *response =
+  const auto* response =
       std::get_if<mcp::protocol::JsonRpcResponse>(&**dispatched);
   require(response != nullptr, label);
   require(response->result.has_value(), label);
   return *response;
 }
 
-} // namespace
+}  // namespace
 
 int main() {
   try {
@@ -58,12 +59,13 @@ int main() {
     int resource_updated = 0;
     int elicitation_complete = 0;
     int task_status = 0;
+    int cancellation_aware_handlers = 0;
 
     peer.set_roots({mcp::protocol::Root{.uri = "file:///workspace",
                                         .name = "workspace"}})
         .on_initialized([&] { ++initialized; })
         .on_cancelled(
-            [&](const mcp::protocol::RequestId &, std::string_view reason) {
+            [&](const mcp::protocol::RequestId&, std::string_view reason) {
               require(reason == "done", "cancel reason mismatch");
               ++cancelled;
             })
@@ -74,7 +76,7 @@ int main() {
               ++logging;
             })
         .on_progress(
-            [&](const mcp::protocol::ProgressNotificationParams &params) {
+            [&](const mcp::protocol::ProgressNotificationParams& params) {
               require(params.progress == 0.5, "progress value mismatch");
               ++progress;
             })
@@ -82,7 +84,7 @@ int main() {
         .on_prompt_list_changed([&] { ++list_changed; })
         .on_resource_list_changed([&] { ++list_changed; })
         .on_roots_list_changed([&] { ++list_changed; })
-        .on_resource_updated([&](const std::string &uri) {
+        .on_resource_updated([&](const std::string& uri) {
           require(uri == "file:///workspace/data.txt",
                   "resource updated uri mismatch");
           ++resource_updated;
@@ -91,15 +93,30 @@ int main() {
           require(id == "elicitation-1", "elicitation complete id mismatch");
           ++elicitation_complete;
         })
-        .on_task_status([&](const mcp::protocol::Task &task) {
+        .on_task_status([&](const mcp::protocol::Task& task) {
           require(task.task_id == "task-1", "task status id mismatch");
           require(task.status == mcp::protocol::TaskStatus::Completed,
                   "task status mismatch");
           ++task_status;
         })
+        .on_list_roots_request(
+            [&](mcp::CancellationToken cancellation)
+                -> mcp::core::Result<mcp::protocol::RootsListResult> {
+              require(!cancellation.cancelled(),
+                      "roots cancellation should not be set");
+              ++cancellation_aware_handlers;
+              mcp::protocol::RootsListResult result;
+              result.roots.push_back(mcp::protocol::Root{
+                  .uri = "file:///workspace", .name = "workspace"});
+              return result;
+            })
         .on_create_message_request(
-            [](const mcp::protocol::CreateMessageParams &params)
+            [&](const mcp::protocol::CreateMessageParams& params,
+                mcp::CancellationToken cancellation)
                 -> mcp::core::Result<mcp::protocol::CreateMessageResult> {
+              require(!cancellation.cancelled(),
+                      "sampling cancellation should not be set");
+              ++cancellation_aware_handlers;
               require(params.max_tokens == 64, "sampling max tokens mismatch");
               return mcp::protocol::CreateMessageResult{
                   .role = "assistant",
@@ -109,8 +126,12 @@ int main() {
               };
             })
         .on_create_elicitation_request(
-            [](const mcp::protocol::CreateElicitationRequestParam &params)
+            [&](const mcp::protocol::CreateElicitationRequestParam& params,
+                mcp::CancellationToken cancellation)
                 -> mcp::core::Result<mcp::protocol::CreateElicitationResult> {
+              require(!cancellation.cancelled(),
+                      "elicitation cancellation should not be set");
+              ++cancellation_aware_handlers;
               require(params.message == "Choose owner",
                       "elicitation message mismatch");
               return mcp::protocol::CreateElicitationResult{
@@ -118,8 +139,12 @@ int main() {
                   .content = Json{{"owner", "sdk"}},
               };
             })
-        .on_custom_request([](const mcp::protocol::JsonRpcRequest &request)
+        .on_custom_request([&](const mcp::protocol::JsonRpcRequest& request,
+                               mcp::CancellationToken cancellation)
                                -> mcp::core::Result<Json> {
+          require(!cancellation.cancelled(),
+                  "custom cancellation should not be set");
+          ++cancellation_aware_handlers;
           require(request.method == "client/custom", "custom method mismatch");
           return Json{{"custom", true}};
         });
@@ -258,10 +283,12 @@ int main() {
     require(resource_updated == 1, "resource updated count mismatch");
     require(elicitation_complete == 1, "elicitation complete count mismatch");
     require(task_status == 1, "task status count mismatch");
+    require(cancellation_aware_handlers == 4,
+            "cancellation-aware handler count mismatch");
 
     std::cout << "client callbacks matrix passed\n";
     return 0;
-  } catch (const std::exception &ex) {
+  } catch (const std::exception& ex) {
     std::cerr << "client callbacks matrix failed: " << ex.what() << '\n';
     return 1;
   }

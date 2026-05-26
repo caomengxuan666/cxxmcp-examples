@@ -47,7 +47,7 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | outbound elicitation/create typed and async calls | `elicitation_client`, `async_request_matrix` |
 | roots/list and roots list-changed | `client_callbacks_matrix` |
 | logging/setLevel and logging notifications | `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix` |
-| cancellation, progress, list-changed, elicitation-complete, task-status notifications | `timeout_cancellation_client`, `client_callbacks_matrix`, `sdk_smoke`, `async_request_matrix` |
+| cancellation, progress, list-changed, elicitation-complete, task-status notifications | `timeout_cancellation_client`, `client_inbound_cancellation_matrix`, `client_callbacks_matrix`, `sdk_smoke`, `async_request_matrix` |
 | raw/custom requests and notifications | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix` |
 | RequestOptions, RequestHandle, async helpers, timeout/cancel, list_all helpers and cursor pagination | `timeout_cancellation_client`, `async_request_matrix`, `pagination_cursor_matrix`, `sdk_smoke` |
 | role-generic transport contract | `transport_stdio_matrix`, `transport_adapter_matrix` |
@@ -55,7 +55,8 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | standalone streamable HTTP client | `streamable_http_client` |
 | streamable HTTP client/server via gateway runtime | `http_gateway_runtime_matrix` |
 | direct streamable HTTP server/client and legacy SSE client path | `direct_http_legacy_sse_matrix` |
-| auth provider and rate limiter hooks | `policy_subscription_matrix` |
+| HTTP auth-lite: Authorization header, auth identity, 401 unauthorized mapping, WWW-Authenticate configuration | `http_auth_lite_matrix`, `policy_subscription_matrix` |
+| auth provider and rate limiter hooks | `policy_subscription_matrix`, `http_auth_lite_matrix` |
 | plugin SDK and adapter extension points | `extension_plugin_adapter_matrix` |
 | client/server legacy transport adapters and role-generic contract adapters | `transport_adapter_matrix` |
 | runtime/gateway layer | `http_gateway_runtime_matrix`, `runtime_services_matrix` |
@@ -89,6 +90,9 @@ run outside the SDK repository.
 - `cxxmcp_timeout_cancellation_client`: a focused `ClientPeer` example showing
   request timeouts, external cancellation tokens, cancellation notifications,
   and idempotent `RequestHandle::cancel()`.
+- `cxxmcp_client_inbound_cancellation_matrix`: demonstrates
+  cancellation-aware client-side request handlers and propagation from
+  `notifications/cancelled` into the inbound handler `CancellationToken`.
 - `cxxmcp_workspace_server`: a stdio MCP server for code/workspace inspection.
   It provides bounded file reads, regex search, workspace summaries, a review
   prompt, completion suggestions, sample generation, a summary resource, a file
@@ -99,8 +103,9 @@ run outside the SDK repository.
   and supports task-capable log tools.
 - `cxxmcp_client_callbacks_matrix`: a client-side matrix for server-to-client
   features. It handles `roots/list`, `sampling/createMessage`,
-  `elicitation/create`, custom requests, cancellation, progress, logging, list
-  changed notifications, and resource update notifications.
+  `elicitation/create`, custom requests, cancellation-aware request handlers,
+  progress, logging, list changed notifications, and resource update
+  notifications.
 - `cxxmcp_transport_stdio_matrix`: validates the role-generic
   `transport::ClientStdioTransport` and `transport::ServerStdioTransport`
   message contract over caller-owned streams.
@@ -130,6 +135,10 @@ run outside the SDK repository.
 - `cxxmcp_direct_http_legacy_sse_matrix`: runs the direct HTTP transport path
   without the gateway wrapper and verifies both streamable HTTP and legacy SSE
   client connection helpers.
+- `cxxmcp_http_auth_lite_matrix`: runs a direct streamable HTTP server with an
+  `AuthProvider`, a configured `WWW-Authenticate` challenge, and a client
+  `Authorization` bearer header; it verifies unauthorized `401` failures and
+  authenticated `ToolContext::auth_identity` propagation.
 - `cxxmcp_pagination_cursor_matrix`: drives cursor-based list pagination for
   tools, prompts, resources, resource templates, and tasks through the
   `ClientPeer::list_all_*` helpers.
@@ -202,9 +211,11 @@ command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_log_triage_server.exe'
 4. Move to `src/workspace_server.cpp` and `src/log_triage_server.cpp` for typed
    arguments/results, schemas, resources, prompts, completion, sampling,
    logging, raw requests, and task support in realistic servers.
-5. Read `src/client_callbacks_matrix.cpp` and `src/elicitation_client.cpp` for
-   client-side request and notification handlers that do not appear as ordinary
-   tools.
+5. Read `src/client_callbacks_matrix.cpp`,
+   `src/client_inbound_cancellation_matrix.cpp`, and
+   `src/elicitation_client.cpp` for client-side request and notification
+   handlers that do not appear as ordinary tools, including cancellation-aware
+   inbound callbacks.
 6. Read `src/graceful_shutdown.cpp`, `src/transport_stdio_matrix.cpp`, and
    `src/native_server_transport_matrix.cpp` for service shutdown,
    role-generic transports, and custom server transports.
@@ -220,10 +231,11 @@ command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_log_triage_server.exe'
    `src/rich_content_cancellation_matrix.cpp` for advanced peer callbacks,
    handler contracts, custom transports, rich content, and cancellation.
 10. Read `src/direct_http_legacy_sse_matrix.cpp`,
+   `src/http_auth_lite_matrix.cpp`,
    `src/pagination_cursor_matrix.cpp`,
    `src/client_subscription_helper_matrix.cpp`, and
-   `src/task_cancel_matrix.cpp` for direct HTTP/SSE, pagination,
-   subscriptions, and task cancellation.
+   `src/task_cancel_matrix.cpp` for direct HTTP/SSE, HTTP auth-lite,
+   pagination, subscriptions, and task cancellation.
 11. Read `src/transport_adapter_matrix.cpp` for concrete-to-contract transport
    bridges on both client and server roles.
 12. Read `src/http_gateway_runtime_matrix.cpp` and

@@ -51,6 +51,10 @@ add_executable(cxxmcp_timeout_cancellation_client
     src/timeout_cancellation_client.cpp)
 cxxmcp_example(cxxmcp_timeout_cancellation_client)
 
+add_executable(cxxmcp_client_inbound_cancellation_matrix
+    src/client_inbound_cancellation_matrix.cpp)
+cxxmcp_example(cxxmcp_client_inbound_cancellation_matrix)
+
 add_executable(cxxmcp_client_callbacks_matrix src/client_callbacks_matrix.cpp)
 cxxmcp_example(cxxmcp_client_callbacks_matrix)
 
@@ -102,6 +106,8 @@ add_executable(cxxmcp_rich_content_cancellation_matrix src/rich_content_cancella
 cxxmcp_example(cxxmcp_rich_content_cancellation_matrix)
 add_executable(cxxmcp_direct_http_legacy_sse_matrix src/direct_http_legacy_sse_matrix.cpp)
 cxxmcp_example(cxxmcp_direct_http_legacy_sse_matrix)
+add_executable(cxxmcp_http_auth_lite_matrix src/http_auth_lite_matrix.cpp)
+cxxmcp_example(cxxmcp_http_auth_lite_matrix)
 
 add_executable(cxxmcp_pagination_cursor_matrix src/pagination_cursor_matrix.cpp)
 cxxmcp_example(cxxmcp_pagination_cursor_matrix)
@@ -141,6 +147,8 @@ add_test(NAME cxxmcp_elicitation_client COMMAND cxxmcp_elicitation_client)
 add_test(NAME cxxmcp_graceful_shutdown COMMAND cxxmcp_graceful_shutdown)
 add_test(NAME cxxmcp_timeout_cancellation_client
          COMMAND cxxmcp_timeout_cancellation_client)
+add_test(NAME cxxmcp_client_inbound_cancellation_matrix
+         COMMAND cxxmcp_client_inbound_cancellation_matrix)
 add_test(NAME cxxmcp_client_callbacks_matrix COMMAND cxxmcp_client_callbacks_matrix)
 add_test(NAME cxxmcp_transport_stdio_matrix COMMAND cxxmcp_transport_stdio_matrix)
 add_test(NAME cxxmcp_process_stdio_client_probe COMMAND cxxmcp_process_stdio_client_probe)
@@ -152,6 +160,7 @@ add_test(NAME cxxmcp_handler_interface_matrix COMMAND cxxmcp_handler_interface_m
 add_test(NAME cxxmcp_native_server_transport_matrix COMMAND cxxmcp_native_server_transport_matrix)
 add_test(NAME cxxmcp_rich_content_cancellation_matrix COMMAND cxxmcp_rich_content_cancellation_matrix)
 add_test(NAME cxxmcp_direct_http_legacy_sse_matrix COMMAND cxxmcp_direct_http_legacy_sse_matrix)
+add_test(NAME cxxmcp_http_auth_lite_matrix COMMAND cxxmcp_http_auth_lite_matrix)
 add_test(NAME cxxmcp_pagination_cursor_matrix COMMAND cxxmcp_pagination_cursor_matrix)
 add_test(NAME cxxmcp_client_subscription_helper_matrix COMMAND cxxmcp_client_subscription_helper_matrix)
 add_test(NAME cxxmcp_task_cancel_matrix COMMAND cxxmcp_task_cancel_matrix)
