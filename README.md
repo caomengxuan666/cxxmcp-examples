@@ -135,9 +135,10 @@ run outside the SDK repository.
 - `cxxmcp_direct_http_legacy_sse_matrix`: runs the direct HTTP transport path
   without the gateway wrapper and verifies both streamable HTTP and legacy SSE
   client connection helpers.
-- `cxxmcp_http_auth_lite_matrix`: runs a direct streamable HTTP server with an
-  `AuthProvider`, a configured `WWW-Authenticate` challenge, and a client
-  `Authorization` bearer header; it verifies unauthorized `401` failures and
+- `cxxmcp_http_auth_lite_matrix`: runs a direct streamable HTTP server through
+  `ServerPeer` + `Service` with an `AuthProvider`, a configured
+  `WWW-Authenticate` challenge, and a `ClientPeer` streamable HTTP endpoint
+  using the bearer-token helper; it verifies unauthorized `401` failures and
   authenticated `ToolContext::auth_identity` propagation.
 - `cxxmcp_pagination_cursor_matrix`: drives cursor-based list pagination for
   tools, prompts, resources, resource templates, and tasks through the
@@ -184,6 +185,21 @@ cmake --build build-installed --config Release
 The adjacent-source build enables the gateway target so the HTTP/runtime and
 app service examples are compiled and tested. If an installed package does not
 include `cxxmcp::gateway`, the gateway examples are skipped by CMake.
+
+For a focused check while developing against a local SDK checkout:
+
+```powershell
+cmake -S . -B build -DCXXMCP_EXAMPLES_SDK_SOURCE_DIR=C:/Users/cmx/repo/MCPServer.cpp
+cmake --build build --config Release --target cxxmcp_http_auth_lite_matrix cxxmcp_client_inbound_cancellation_matrix cxxmcp_task_cancel_matrix
+ctest --test-dir build -C Release -R "cxxmcp_(http_auth_lite_matrix|client_inbound_cancellation_matrix|task_cancel_matrix)" --output-on-failure
+```
+
+`cxxmcp_http_auth_lite_matrix` is the smallest copyable HTTP auth-lite flow:
+the server installs `AuthProvider`, `HttpTransportOptions::auth_challenge`, and
+`ServerPeer`/`mcp::serve`; the client uses
+`Client::StreamableHttpEndpoint::auth_header = "valid-token"` through
+`ClientPeer::connect_streamable_http`, which the SDK sends as
+`Authorization: Bearer valid-token`.
 
 ## Codex Config
 
