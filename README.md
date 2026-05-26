@@ -1,13 +1,34 @@
 # cxxmcp examples
 
-This repository is a downstream validation suite for the C++ `cxxmcp` SDK. It
-is intentionally separate from the SDK tree so it exercises the same CMake and
-public-header path that application authors use.
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C.svg)](https://isocpp.org/)
+[![CMake](https://img.shields.io/badge/build-CMake-064F8C.svg)](https://cmake.org/)
+[![MCP](https://img.shields.io/badge/protocol-Model%20Context%20Protocol-111827.svg)](https://modelcontextprotocol.io/)
+[![SDK](https://img.shields.io/badge/upstream-cxxmcp-0F766E.svg)](https://github.com/caomengxuan666/cxxmcp)
+
+Application-style examples and downstream validation for the
+[`cxxmcp`](https://github.com/caomengxuan666/cxxmcp) C++ MCP SDK.
+
+This repository is intentionally separate from the SDK source tree. It consumes
+`cxxmcp` like an application author would: through CMake targets, public
+headers, real executables, and end-to-end probes. The examples start with small
+stdio servers, then move into advanced SDK surfaces such as async requests,
+role-generic transports, direct HTTP/SSE, task cancellation, plugin adapters,
+gateway runtime, and app service management.
+
+## Repository Role
+
+Use this repository when you want to:
+
+- Learn the SDK from small examples through advanced integration patterns.
+- Validate that an installed or adjacent `cxxmcp` SDK can be consumed by a
+  downstream CMake project.
+- Exercise realistic MCP client/server behavior beyond isolated unit tests.
+- Smoke-test gateway/runtime and app-service APIs outside the SDK repository.
 
 ## What This Validates
 
 The suite is organized from small authoring examples to protocol, transport,
-request-lifecycle, policy, extension, and gateway/runtime coverage.
+request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 
 | MCP / SDK surface | Example coverage |
 | --- | --- |
