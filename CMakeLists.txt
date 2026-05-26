@@ -47,6 +47,10 @@ cxxmcp_example(cxxmcp_elicitation_client)
 add_executable(cxxmcp_graceful_shutdown src/graceful_shutdown.cpp)
 cxxmcp_example(cxxmcp_graceful_shutdown)
 
+add_executable(cxxmcp_timeout_cancellation_client
+    src/timeout_cancellation_client.cpp)
+cxxmcp_example(cxxmcp_timeout_cancellation_client)
+
 add_executable(cxxmcp_client_callbacks_matrix src/client_callbacks_matrix.cpp)
 cxxmcp_example(cxxmcp_client_callbacks_matrix)
 
@@ -135,6 +139,8 @@ enable_testing()
 add_test(NAME cxxmcp_sdk_smoke COMMAND cxxmcp_sdk_smoke)
 add_test(NAME cxxmcp_elicitation_client COMMAND cxxmcp_elicitation_client)
 add_test(NAME cxxmcp_graceful_shutdown COMMAND cxxmcp_graceful_shutdown)
+add_test(NAME cxxmcp_timeout_cancellation_client
+         COMMAND cxxmcp_timeout_cancellation_client)
 add_test(NAME cxxmcp_client_callbacks_matrix COMMAND cxxmcp_client_callbacks_matrix)
 add_test(NAME cxxmcp_transport_stdio_matrix COMMAND cxxmcp_transport_stdio_matrix)
 add_test(NAME cxxmcp_process_stdio_client_probe COMMAND cxxmcp_process_stdio_client_probe)

@@ -47,9 +47,9 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | outbound elicitation/create typed and async calls | `elicitation_client`, `async_request_matrix` |
 | roots/list and roots list-changed | `client_callbacks_matrix` |
 | logging/setLevel and logging notifications | `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix` |
-| cancellation, progress, list-changed, elicitation-complete, task-status notifications | `client_callbacks_matrix`, `sdk_smoke`, `async_request_matrix` |
+| cancellation, progress, list-changed, elicitation-complete, task-status notifications | `timeout_cancellation_client`, `client_callbacks_matrix`, `sdk_smoke`, `async_request_matrix` |
 | raw/custom requests and notifications | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix` |
-| RequestOptions, RequestHandle, async helpers, timeout/cancel, list_all helpers and cursor pagination | `async_request_matrix`, `pagination_cursor_matrix`, `sdk_smoke` |
+| RequestOptions, RequestHandle, async helpers, timeout/cancel, list_all helpers and cursor pagination | `timeout_cancellation_client`, `async_request_matrix`, `pagination_cursor_matrix`, `sdk_smoke` |
 | role-generic transport contract | `transport_stdio_matrix`, `transport_adapter_matrix` |
 | child-process stdio transport, `ClientPeer::connect_stdio`, and `mcp::serve` | `process_stdio_client_probe` |
 | standalone streamable HTTP client | `streamable_http_client` |
@@ -86,6 +86,9 @@ run outside the SDK repository.
   accepts or declines `elicitation/create` requests.
 - `cxxmcp_graceful_shutdown`: a small `ServerPeer` + `Service` lifecycle probe
   showing cooperative cancellation and idempotent shutdown.
+- `cxxmcp_timeout_cancellation_client`: a focused `ClientPeer` example showing
+  request timeouts, external cancellation tokens, cancellation notifications,
+  and idempotent `RequestHandle::cancel()`.
 - `cxxmcp_workspace_server`: a stdio MCP server for code/workspace inspection.
   It provides bounded file reads, regex search, workspace summaries, a review
   prompt, completion suggestions, sample generation, a summary resource, a file
@@ -205,8 +208,9 @@ command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_log_triage_server.exe'
 6. Read `src/graceful_shutdown.cpp`, `src/transport_stdio_matrix.cpp`, and
    `src/native_server_transport_matrix.cpp` for service shutdown,
    role-generic transports, and custom server transports.
-7. Read `src/async_request_matrix.cpp` for request metadata, async helpers,
-   timeout, cancellation, and typed completion helpers.
+7. Read `src/timeout_cancellation_client.cpp` first for focused timeout and
+   cancellation behavior, then `src/async_request_matrix.cpp` for request
+   metadata, async helpers, list-all helpers, and typed completion helpers.
 8. Read `src/policy_subscription_matrix.cpp` and
    `src/extension_plugin_adapter_matrix.cpp` for server policy hooks,
    subscriptions, plugin SDK, and adapters.

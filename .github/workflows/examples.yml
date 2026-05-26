@@ -1,0 +1,35 @@
+name: examples
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout examples
+        uses: actions/checkout@v4
+        with:
+          path: cxxmcp-examples
+
+      - name: Checkout cxxmcp SDK
+        uses: actions/checkout@v4
+        with:
+          repository: caomengxuan666/cxxmcp
+          path: MCPServer.cpp
+
+      - name: Configure
+        run: cmake -S cxxmcp-examples -B cxxmcp-examples/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build cxxmcp-examples/build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir cxxmcp-examples/build -C Release --output-on-failure --timeout 300
