@@ -52,6 +52,77 @@ struct ClientContract final : mcp::client::ClientHandlerInterface {
 struct ServerContract final : mcp::server::ServerHandlerInterface {
   mutable int logging = 0;
   mutable int progress = 0;
+  mutable int list_tools = 0;
+  mutable int call_tool = 0;
+  mutable int get_prompt = 0;
+  mutable int read_resource = 0;
+
+  std::optional<mcp::core::Result<mcp::protocol::ToolsListResult>>
+  on_list_tools(const mcp::server::SessionContext &) const override {
+    ++list_tools;
+    return mcp::protocol::ToolsListResult{
+        .tools = {mcp::protocol::tool_definition("contract.echo")
+                      .input<Json>()
+                      .build()},
+    };
+  }
+
+  std::optional<mcp::core::Result<mcp::protocol::ToolResult>>
+  on_call_tool(const mcp::protocol::ToolCall &call,
+               const mcp::server::SessionContext &context,
+               mcp::CancellationToken cancellation) const override {
+    require(call.name == "contract.echo", "contract tool name mismatch");
+    require(context.session_id == "handler-session",
+            "contract tool context mismatch");
+    require(!cancellation.cancelled(), "contract tool cancelled unexpectedly");
+    ++call_tool;
+    mcp::protocol::ToolResult result;
+    result.structured_content =
+        Json{{"echo", call.arguments}, {"session", context.session_id}};
+    result.content.push_back(
+        mcp::protocol::ContentBlock::text_content("contract echo"));
+    result.is_error = false;
+    return result;
+  }
+
+  std::optional<mcp::core::Result<mcp::protocol::PromptsGetResult>>
+  on_get_prompt(const mcp::protocol::PromptsGetParams &params,
+                const mcp::server::SessionContext &context,
+                mcp::CancellationToken cancellation) const override {
+    require(params.name == "contract.prompt", "contract prompt name mismatch");
+    require(context.session_id == "handler-session",
+            "contract prompt context mismatch");
+    require(!cancellation.cancelled(),
+            "contract prompt cancelled unexpectedly");
+    ++get_prompt;
+    mcp::protocol::PromptsGetResult result;
+    result.messages.push_back(mcp::protocol::PromptMessage{
+        .role = "user",
+        .content = mcp::protocol::ContentBlock::text_content(
+            "render " + params.arguments.value("topic", std::string{})),
+    });
+    return result;
+  }
+
+  std::optional<mcp::core::Result<mcp::protocol::ResourcesReadResult>>
+  on_read_resource(const mcp::protocol::ResourcesReadParams &params,
+                   const mcp::server::SessionContext &context,
+                   mcp::CancellationToken cancellation) const override {
+    require(params.uri == "contract://resource",
+            "contract resource uri mismatch");
+    require(context.session_id == "handler-session",
+            "contract resource context mismatch");
+    require(!cancellation.cancelled(),
+            "contract resource cancelled unexpectedly");
+    ++read_resource;
+    mcp::protocol::ResourcesReadResult result;
+    result.contents.push_back(mcp::protocol::ResourceContents{
+        .uri = params.uri,
+        .mime_type = "text/plain",
+        .text = std::string("contract resource"),
+    });
+    return result;
+  }
 
   std::optional<mcp::core::Result<Json>>
   on_completion(const Json &request) const override {
@@ -135,6 +206,57 @@ int main() {
         server_context);
     require(completion.has_value() && completion->result.has_value(),
             "server contract completion failed");
+    auto tools = (*server)->handle_request(
+        mcp::protocol::JsonRpcRequest{
+            .method = std::string(mcp::protocol::ToolsListMethod),
+            .params = Json::object(),
+            .id = std::int64_t{30},
+        },
+        server_context);
+    require(tools.has_value() && tools->result.has_value() &&
+                tools->result->at("tools").size() == 1,
+            "server contract tools/list failed");
+    auto tool_call = (*server)->handle_request(
+        mcp::protocol::JsonRpcRequest{
+            .method = std::string(mcp::protocol::ToolsCallMethod),
+            .params = mcp::protocol::tool_call_to_json(mcp::protocol::ToolCall{
+                .name = "contract.echo",
+                .arguments = Json{{"value", 42}},
+            }),
+            .id = std::int64_t{31},
+        },
+        server_context);
+    require(tool_call.has_value() && tool_call->result.has_value() &&
+                tool_call->result->at("structuredContent").at("session") ==
+                    "handler-session",
+            "server contract tools/call failed");
+    auto prompt = (*server)->handle_request(
+        mcp::protocol::JsonRpcRequest{
+            .method = std::string(mcp::protocol::PromptsGetMethod),
+            .params = mcp::protocol::prompts_get_params_to_json(
+                mcp::protocol::PromptsGetParams{
+                    .name = "contract.prompt",
+                    .arguments = Json{{"topic", "sdk"}},
+                }),
+            .id = std::int64_t{32},
+        },
+        server_context);
+    require(prompt.has_value() && prompt->result.has_value() &&
+                prompt->result->at("messages").size() == 1,
+            "server contract prompts/get failed");
+    auto resource = (*server)->handle_request(
+        mcp::protocol::JsonRpcRequest{
+            .method = std::string(mcp::protocol::ResourcesReadMethod),
+            .params = mcp::protocol::resources_read_params_to_json(
+                mcp::protocol::ResourcesReadParams{
+                    .uri = "contract://resource",
+                }),
+            .id = std::int64_t{33},
+        },
+        server_context);
+    require(resource.has_value() && resource->result.has_value() &&
+                resource->result->at("contents").size() == 1,
+            "server contract resources/read failed");
     require(
         (*server)
             ->handle_request(
@@ -168,6 +290,10 @@ int main() {
         "server contract progress failed");
     require(server_contract.logging == 1 && server_contract.progress == 1,
             "server contract counts mismatch");
+    require(server_contract.list_tools == 1 && server_contract.call_tool == 1 &&
+                server_contract.get_prompt == 1 &&
+                server_contract.read_resource == 1,
+            "server contract execution counts mismatch");
 
     std::cout << "handler interface matrix passed\n";
     return 0;

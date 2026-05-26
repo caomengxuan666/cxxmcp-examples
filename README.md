@@ -11,9 +11,10 @@ Application-style examples and downstream validation for the
 This repository is intentionally separate from the SDK source tree. It consumes
 `cxxmcp` like an application author would: through CMake targets, public
 headers, real executables, and end-to-end probes. The examples start with small
-stdio servers, then move into advanced SDK surfaces such as async requests,
-role-generic transports, direct HTTP/SSE, task cancellation, plugin adapters,
-gateway runtime, and app service management.
+stdio servers, then move into SDK-first `ClientPeer` / `ServerPeer` /
+`Service` surfaces such as async requests, role-generic transports, direct
+HTTP/SSE, task cancellation, plugin adapters, gateway runtime, and app service
+management.
 
 ## Repository Role
 
@@ -34,7 +35,7 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | --- | --- |
 | initialize / ping / initialized | `minimal_stdio_server`, `sdk_smoke`, `process_stdio_client_probe`, `http_gateway_runtime_matrix` |
 | tools/list, tools/get, tools/call | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, `async_request_matrix`, process/gateway probes |
-| typed tool args/results and JSON schemas | `workspace_server`, `log_triage_server`, `extension_plugin_adapter_matrix` |
+| typed tool args/results and JSON schemas | `typed_tool_server`, `workspace_server`, `log_triage_server`, `extension_plugin_adapter_matrix` |
 | task-backed tools and task list/get/result/cancel | `workspace_server`, `log_triage_server`, `sdk_smoke`, `task_cancel_matrix`, `server_to_client_context_matrix` |
 | prompts/list and prompts/get | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
 | resources/list and resources/read | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
@@ -43,7 +44,7 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | completion/complete raw and typed helper APIs | `workspace_server`, `log_triage_server`, `sdk_smoke`, `async_request_matrix` |
 | sampling/createMessage server and client-side callback | `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix`, `async_request_matrix` |
 | elicitation/create client-side callback and schema builder | `client_callbacks_matrix` |
-| outbound elicitation/create typed and async calls | `async_request_matrix` |
+| outbound elicitation/create typed and async calls | `elicitation_client`, `async_request_matrix` |
 | roots/list and roots list-changed | `client_callbacks_matrix` |
 | logging/setLevel and logging notifications | `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix` |
 | cancellation, progress, list-changed, elicitation-complete, task-status notifications | `client_callbacks_matrix`, `sdk_smoke`, `async_request_matrix` |
@@ -51,6 +52,7 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | RequestOptions, RequestHandle, async helpers, timeout/cancel, list_all helpers and cursor pagination | `async_request_matrix`, `pagination_cursor_matrix`, `sdk_smoke` |
 | role-generic transport contract | `transport_stdio_matrix`, `transport_adapter_matrix` |
 | child-process stdio transport, `ClientPeer::connect_stdio`, and `mcp::serve` | `process_stdio_client_probe` |
+| standalone streamable HTTP client | `streamable_http_client` |
 | streamable HTTP client/server via gateway runtime | `http_gateway_runtime_matrix` |
 | direct streamable HTTP server/client and legacy SSE client path | `direct_http_legacy_sse_matrix` |
 | auth provider and rate limiter hooks | `policy_subscription_matrix` |
@@ -59,6 +61,7 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | runtime/gateway layer | `http_gateway_runtime_matrix`, `runtime_services_matrix` |
 | server handler uses `ToolContext::client()` / `SessionContext::client()` | `server_to_client_context_matrix` |
 | `ClientHandler` / `ClientHandlerInterface` and `ServerHandler` / `ServerHandlerInterface` | `handler_interface_matrix` |
+| graceful service shutdown and cancellation | `graceful_shutdown`, `process_stdio_client_probe`, `direct_http_legacy_sse_matrix` |
 | custom role-generic `transport::ServerTransport` with `ServerPeer::serve_transport` | `native_server_transport_matrix` |
 | rich content blocks: image, audio, embedded resource, resource link, annotations, `_meta` | `rich_content_cancellation_matrix` |
 | server-side cooperative cancellation through `ToolContext::cancelled()` | `rich_content_cancellation_matrix`, `task_cancel_matrix` |
@@ -73,6 +76,16 @@ run outside the SDK repository.
 
 - `cxxmcp_minimal_stdio_server`: the smallest useful stdio server. It shows
   initialize, one JSON tool, one prompt, one resource, and a raw health request.
+- `cxxmcp_typed_tool_server`: a compact typed stdio server. It shows
+  `from_json`, `to_json`, `SchemaTraits`, typed tool registration, output
+  schema, and `ToolContext` access.
+- `cxxmcp_streamable_http_client`: a standalone `ClientPeer` + `Service`
+  streamable HTTP client. Pass an endpoint URI or use the default
+  `http://127.0.0.1:3000/mcp`.
+- `cxxmcp_elicitation_client`: a client-side elicitation handler example that
+  accepts or declines `elicitation/create` requests.
+- `cxxmcp_graceful_shutdown`: a small `ServerPeer` + `Service` lifecycle probe
+  showing cooperative cancellation and idempotent shutdown.
 - `cxxmcp_workspace_server`: a stdio MCP server for code/workspace inspection.
   It provides bounded file reads, regex search, workspace summaries, a review
   prompt, completion suggestions, sample generation, a summary resource, a file
@@ -176,34 +189,40 @@ command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_log_triage_server.exe'
 
 ## Learning Path
 
-1. Start with `src/minimal_stdio_server.cpp` to see the compact `App::builder()`
-   API and newline-delimited stdio transport.
-2. Move to `src/workspace_server.cpp` and `src/log_triage_server.cpp` for typed
+1. Start with `src/minimal_stdio_server.cpp` to see the compact stdio server
+   shape and newline-delimited transport.
+2. Read `src/typed_tool_server.cpp` for the typed tool path: JSON schema,
+   `from_json`, `to_json`, and `ToolContext`.
+3. Read `src/streamable_http_client.cpp` and
+   `src/process_stdio_client_probe.cpp` for `ClientPeer` plus `Service` over
+   network and child-process transports.
+4. Move to `src/workspace_server.cpp` and `src/log_triage_server.cpp` for typed
    arguments/results, schemas, resources, prompts, completion, sampling,
    logging, raw requests, and task support in realistic servers.
-3. Read `src/client_callbacks_matrix.cpp` for client-side request and
-   notification handlers that do not appear as ordinary tools.
-4. Read `src/transport_stdio_matrix.cpp` and
-   `src/process_stdio_client_probe.cpp` for role-generic transports and child
-   process stdio.
-5. Read `src/async_request_matrix.cpp` for request metadata, async helpers,
+5. Read `src/client_callbacks_matrix.cpp` and `src/elicitation_client.cpp` for
+   client-side request and notification handlers that do not appear as ordinary
+   tools.
+6. Read `src/graceful_shutdown.cpp`, `src/transport_stdio_matrix.cpp`, and
+   `src/native_server_transport_matrix.cpp` for service shutdown,
+   role-generic transports, and custom server transports.
+7. Read `src/async_request_matrix.cpp` for request metadata, async helpers,
    timeout, cancellation, and typed completion helpers.
-6. Read `src/policy_subscription_matrix.cpp` and
+8. Read `src/policy_subscription_matrix.cpp` and
    `src/extension_plugin_adapter_matrix.cpp` for server policy hooks,
    subscriptions, plugin SDK, and adapters.
-7. Read `src/server_to_client_context_matrix.cpp`,
+9. Read `src/server_to_client_context_matrix.cpp`,
    `src/handler_interface_matrix.cpp`,
    `src/native_server_transport_matrix.cpp`, and
    `src/rich_content_cancellation_matrix.cpp` for advanced peer callbacks,
    handler contracts, custom transports, rich content, and cancellation.
-8. Read `src/direct_http_legacy_sse_matrix.cpp`,
+10. Read `src/direct_http_legacy_sse_matrix.cpp`,
    `src/pagination_cursor_matrix.cpp`,
    `src/client_subscription_helper_matrix.cpp`, and
    `src/task_cancel_matrix.cpp` for direct HTTP/SSE, pagination,
    subscriptions, and task cancellation.
-9. Read `src/transport_adapter_matrix.cpp` for concrete-to-contract transport
+11. Read `src/transport_adapter_matrix.cpp` for concrete-to-contract transport
    bridges on both client and server roles.
-10. Read `src/http_gateway_runtime_matrix.cpp` and
+12. Read `src/http_gateway_runtime_matrix.cpp` and
     `src/runtime_services_matrix.cpp` for streamable HTTP, gateway runtime,
     persisted app stores, client config, readiness/status, onboarding, and
     exposure management.

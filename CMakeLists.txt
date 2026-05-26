@@ -35,6 +35,18 @@ endfunction()
 add_executable(cxxmcp_minimal_stdio_server src/minimal_stdio_server.cpp)
 cxxmcp_example(cxxmcp_minimal_stdio_server)
 
+add_executable(cxxmcp_typed_tool_server src/typed_tool_server.cpp)
+cxxmcp_example(cxxmcp_typed_tool_server)
+
+add_executable(cxxmcp_streamable_http_client src/streamable_http_client.cpp)
+cxxmcp_example(cxxmcp_streamable_http_client)
+
+add_executable(cxxmcp_elicitation_client src/elicitation_client.cpp)
+cxxmcp_example(cxxmcp_elicitation_client)
+
+add_executable(cxxmcp_graceful_shutdown src/graceful_shutdown.cpp)
+cxxmcp_example(cxxmcp_graceful_shutdown)
+
 add_executable(cxxmcp_client_callbacks_matrix src/client_callbacks_matrix.cpp)
 cxxmcp_example(cxxmcp_client_callbacks_matrix)
 
@@ -121,6 +133,8 @@ cxxmcp_example(cxxmcp_sdk_smoke)
 
 enable_testing()
 add_test(NAME cxxmcp_sdk_smoke COMMAND cxxmcp_sdk_smoke)
+add_test(NAME cxxmcp_elicitation_client COMMAND cxxmcp_elicitation_client)
+add_test(NAME cxxmcp_graceful_shutdown COMMAND cxxmcp_graceful_shutdown)
 add_test(NAME cxxmcp_client_callbacks_matrix COMMAND cxxmcp_client_callbacks_matrix)
 add_test(NAME cxxmcp_transport_stdio_matrix COMMAND cxxmcp_transport_stdio_matrix)
 add_test(NAME cxxmcp_process_stdio_client_probe COMMAND cxxmcp_process_stdio_client_probe)
