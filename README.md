@@ -34,6 +34,11 @@ request-lifecycle, policy, extension, and gateway/runtime coverage.
 | auth provider and rate limiter hooks | `policy_subscription_matrix` |
 | plugin SDK and adapter extension points | `extension_plugin_adapter_matrix` |
 | runtime/gateway layer | `http_gateway_runtime_matrix` |
+| server handler uses `ToolContext::client()` / `SessionContext::client()` | `server_to_client_context_matrix` |
+| `ClientHandler` / `ClientHandlerInterface` and `ServerHandler` / `ServerHandlerInterface` | `handler_interface_matrix` |
+| custom role-generic `transport::ServerTransport` with `ServerPeer::serve_transport` | `native_server_transport_matrix` |
+| rich content blocks: image, audio, embedded resource, resource link, annotations, `_meta` | `rich_content_cancellation_matrix` |
+| server-side cooperative cancellation through `ToolContext::cancelled()` | `rich_content_cancellation_matrix` |
 
 This is not a replacement for the SDK's unit tests. It intentionally does not
 try to call every overload or every DTO serializer one by one; it covers each
@@ -72,6 +77,16 @@ run outside the SDK repository.
 - `cxxmcp_extension_plugin_adapter_matrix`: demonstrates the plugin SDK and
   adapter extension contracts by registering a plugin-backed tool into a normal
   `ToolRegistry`.
+- `cxxmcp_server_to_client_context_matrix`: invokes client roots, sampling,
+  elicitation, task listing, and elicitation-complete notification from inside
+  a server tool through `ToolContext::client()`.
+- `cxxmcp_handler_interface_matrix`: validates aggregate/interface-style
+  `ClientHandler` and `ServerHandler` installation paths.
+- `cxxmcp_native_server_transport_matrix`: drives `ServerPeer::serve_transport`
+  with a custom role-generic `transport::ServerTransport`.
+- `cxxmcp_rich_content_cancellation_matrix`: demonstrates image/audio/resource
+  content blocks, annotations, `_meta`, output schema, and cooperative
+  cancellation observed through `ToolContext::cancelled()`.
 - `cxxmcp_http_gateway_runtime_matrix`: starts the runtime gateway, binds the
   minimal stdio server as an upstream, exposes it over streamable HTTP, and
   calls it with the SDK client.
@@ -133,7 +148,12 @@ command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_log_triage_server.exe'
 6. Read `src/policy_subscription_matrix.cpp` and
    `src/extension_plugin_adapter_matrix.cpp` for server policy hooks,
    subscriptions, plugin SDK, and adapters.
-7. Read `src/http_gateway_runtime_matrix.cpp` for streamable HTTP and gateway
+7. Read `src/server_to_client_context_matrix.cpp`,
+   `src/handler_interface_matrix.cpp`,
+   `src/native_server_transport_matrix.cpp`, and
+   `src/rich_content_cancellation_matrix.cpp` for advanced peer callbacks,
+   handler contracts, custom transports, rich content, and cancellation.
+8. Read `src/http_gateway_runtime_matrix.cpp` for streamable HTTP and gateway
    runtime integration.
 
 ## Manual JSON-RPC Probes
@@ -215,4 +235,5 @@ Log triage server:
   }
 }
 ```
+
 

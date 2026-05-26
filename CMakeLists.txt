@@ -73,6 +73,17 @@ if(TARGET cxxmcp::gateway OR TARGET mcp_gateway)
         PRIVATE CXXMCP_EXAMPLES_CHILD_EXE="$<TARGET_FILE:cxxmcp_minimal_stdio_server>")
     add_dependencies(cxxmcp_http_gateway_runtime_matrix cxxmcp_minimal_stdio_server)
 endif()
+add_executable(cxxmcp_server_to_client_context_matrix src/server_to_client_context_matrix.cpp)
+cxxmcp_example(cxxmcp_server_to_client_context_matrix)
+
+add_executable(cxxmcp_handler_interface_matrix src/handler_interface_matrix.cpp)
+cxxmcp_example(cxxmcp_handler_interface_matrix)
+
+add_executable(cxxmcp_native_server_transport_matrix src/native_server_transport_matrix.cpp)
+cxxmcp_example(cxxmcp_native_server_transport_matrix)
+
+add_executable(cxxmcp_rich_content_cancellation_matrix src/rich_content_cancellation_matrix.cpp)
+cxxmcp_example(cxxmcp_rich_content_cancellation_matrix)
 add_executable(cxxmcp_workspace_server src/workspace_server.cpp)
 cxxmcp_example(cxxmcp_workspace_server)
 
@@ -90,10 +101,15 @@ add_test(NAME cxxmcp_process_stdio_client_probe COMMAND cxxmcp_process_stdio_cli
 add_test(NAME cxxmcp_async_request_matrix COMMAND cxxmcp_async_request_matrix)
 add_test(NAME cxxmcp_policy_subscription_matrix COMMAND cxxmcp_policy_subscription_matrix)
 add_test(NAME cxxmcp_extension_plugin_adapter_matrix COMMAND cxxmcp_extension_plugin_adapter_matrix)
+add_test(NAME cxxmcp_server_to_client_context_matrix COMMAND cxxmcp_server_to_client_context_matrix)
+add_test(NAME cxxmcp_handler_interface_matrix COMMAND cxxmcp_handler_interface_matrix)
+add_test(NAME cxxmcp_native_server_transport_matrix COMMAND cxxmcp_native_server_transport_matrix)
+add_test(NAME cxxmcp_rich_content_cancellation_matrix COMMAND cxxmcp_rich_content_cancellation_matrix)
 if(TARGET cxxmcp_http_gateway_runtime_matrix)
     add_test(NAME cxxmcp_http_gateway_runtime_matrix COMMAND cxxmcp_http_gateway_runtime_matrix)
 endif()
 set_tests_properties(cxxmcp_sdk_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
+
 
 
