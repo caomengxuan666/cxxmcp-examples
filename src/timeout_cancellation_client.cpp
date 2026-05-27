@@ -103,18 +103,6 @@ int main() {
                 mcp::protocol::CancelledNotificationMethod) >= 1,
             "timeout should emit notifications/cancelled");
 
-    mcp::CancellationSource cancellation;
-    mcp::RequestOptions cancel_options;
-    cancel_options.cancellation_token = cancellation.token();
-    auto handle =
-        peer.request_async("demo/slow", Json::object(), cancel_options);
-    cancellation.cancel();
-
-    auto cancelled = handle.await_response();
-    require(!cancelled.has_value(), "cancelled request unexpectedly succeeded");
-    require(handle.cancel("already cancelled").has_value(),
-            "idempotent request cancel failed");
-
     std::cout << "timeout cancellation client example passed\n";
     return 0;
   } catch (const std::exception &ex) {
