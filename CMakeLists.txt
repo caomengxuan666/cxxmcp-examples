@@ -171,5 +171,36 @@ endif()
 if(TARGET cxxmcp_http_gateway_runtime_matrix)
     add_test(NAME cxxmcp_http_gateway_runtime_matrix COMMAND cxxmcp_http_gateway_runtime_matrix)
 endif()
+set(CXXMCP_EXAMPLE_TESTS
+    cxxmcp_sdk_smoke
+    cxxmcp_elicitation_client
+    cxxmcp_graceful_shutdown
+    cxxmcp_timeout_cancellation_client
+    cxxmcp_client_inbound_cancellation_matrix
+    cxxmcp_client_callbacks_matrix
+    cxxmcp_transport_stdio_matrix
+    cxxmcp_process_stdio_client_probe
+    cxxmcp_async_request_matrix
+    cxxmcp_policy_subscription_matrix
+    cxxmcp_extension_plugin_adapter_matrix
+    cxxmcp_server_to_client_context_matrix
+    cxxmcp_handler_interface_matrix
+    cxxmcp_native_server_transport_matrix
+    cxxmcp_rich_content_cancellation_matrix
+    cxxmcp_direct_http_legacy_sse_matrix
+    cxxmcp_http_auth_lite_matrix
+    cxxmcp_pagination_cursor_matrix
+    cxxmcp_client_subscription_helper_matrix
+    cxxmcp_task_cancel_matrix
+    cxxmcp_transport_adapter_matrix)
+
+if(TARGET cxxmcp_runtime_services_matrix)
+    list(APPEND CXXMCP_EXAMPLE_TESTS cxxmcp_runtime_services_matrix)
+endif()
+if(TARGET cxxmcp_http_gateway_runtime_matrix)
+    list(APPEND CXXMCP_EXAMPLE_TESTS cxxmcp_http_gateway_runtime_matrix)
+endif()
+
+set_tests_properties(${CXXMCP_EXAMPLE_TESTS} PROPERTIES TIMEOUT 60)
 set_tests_properties(cxxmcp_sdk_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")

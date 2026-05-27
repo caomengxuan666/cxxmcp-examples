@@ -8,6 +8,9 @@ jobs:
   build:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 4
     strategy:
       fail-fast: false
       matrix:
@@ -24,13 +27,14 @@ jobs:
         with:
           repository: caomengxuan666/cxxmcp
           path: MCPServer.cpp
-          submodules: true
+          ref: master
+          submodules: recursive
 
       - name: Configure
-        run: cmake -S cxxmcp-examples -B cxxmcp-examples/build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S cxxmcp-examples -B cxxmcp-examples/build -DCMAKE_BUILD_TYPE=Release -DCXXMCP_EXAMPLES_SDK_SOURCE_DIR="${{ github.workspace }}/MCPServer.cpp"
 
       - name: Build
-        run: cmake --build cxxmcp-examples/build --config Release --parallel
+        run: cmake --build cxxmcp-examples/build --config Release
 
       - name: Test
-        run: ctest --test-dir cxxmcp-examples/build -C Release --output-on-failure --timeout 300
+        run: ctest --test-dir cxxmcp-examples/build -C Release --output-on-failure --timeout 60
