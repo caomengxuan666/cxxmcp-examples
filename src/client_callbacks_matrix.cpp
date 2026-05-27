@@ -48,8 +48,8 @@ const mcp::protocol::JsonRpcResponse& response_from(
 
 int main() {
   try {
-    mcp::ClientPeer peer(
-        mcp::client::Client(std::make_unique<NoopTransport>()));
+    auto transport = std::make_unique<NoopTransport>();
+    mcp::ClientPeer peer(mcp::client::Client(std::move(transport)));
 
     int initialized = 0;
     int cancelled = 0;

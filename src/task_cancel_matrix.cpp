@@ -83,8 +83,8 @@ int main() {
             .build();
     require(built.has_value(), "server build failed");
 
-    mcp::ClientPeer peer(
-        mcp::client::Client(std::make_unique<LoopbackTransport>(**built)));
+    auto loopback_transport = std::make_unique<LoopbackTransport>(**built);
+    mcp::ClientPeer peer(mcp::client::Client(std::move(loopback_transport)));
     auto task = peer.call_tool_task(mcp::protocol::ToolCall{
         .name = "slow.cancel",
         .arguments = Json::object(),

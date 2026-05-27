@@ -80,8 +80,8 @@ private:
 
 int main() {
   try {
-    mcp::ClientPeer peer(
-        mcp::client::Client(std::make_unique<PagingTransport>()));
+    auto transport = std::make_unique<PagingTransport>();
+    mcp::ClientPeer peer(mcp::client::Client(std::move(transport)));
     require(peer.list_all_tools()->size() == 2, "paged tools mismatch");
     require(peer.list_all_prompts()->size() == 2, "paged prompts mismatch");
     require(peer.list_all_resources()->size() == 2, "paged resources mismatch");
