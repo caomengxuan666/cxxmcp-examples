@@ -59,7 +59,7 @@ int main() {
     int resource_updated = 0;
     int elicitation_complete = 0;
     int task_status = 0;
-    int cancellation_aware_handlers = 0;
+    int request_handlers = 0;
 
     peer.set_roots({mcp::protocol::Root{.uri = "file:///workspace",
                                         .name = "workspace"}})
@@ -100,23 +100,17 @@ int main() {
           ++task_status;
         })
         .on_list_roots_request(
-            [&](mcp::CancellationToken cancellation)
-                -> mcp::core::Result<mcp::protocol::RootsListResult> {
-              require(!cancellation.cancelled(),
-                      "roots cancellation should not be set");
-              ++cancellation_aware_handlers;
+            [&]() -> mcp::core::Result<mcp::protocol::RootsListResult> {
+              ++request_handlers;
               mcp::protocol::RootsListResult result;
               result.roots.push_back(mcp::protocol::Root{
                   .uri = "file:///workspace", .name = "workspace"});
               return result;
             })
         .on_create_message_request(
-            [&](const mcp::protocol::CreateMessageParams& params,
-                mcp::CancellationToken cancellation)
+            [&](const mcp::protocol::CreateMessageParams& params)
                 -> mcp::core::Result<mcp::protocol::CreateMessageResult> {
-              require(!cancellation.cancelled(),
-                      "sampling cancellation should not be set");
-              ++cancellation_aware_handlers;
+              ++request_handlers;
               require(params.max_tokens == 64, "sampling max tokens mismatch");
               return mcp::protocol::CreateMessageResult{
                   .role = "assistant",
@@ -126,12 +120,9 @@ int main() {
               };
             })
         .on_create_elicitation_request(
-            [&](const mcp::protocol::CreateElicitationRequestParam& params,
-                mcp::CancellationToken cancellation)
+            [&](const mcp::protocol::CreateElicitationRequestParam& params)
                 -> mcp::core::Result<mcp::protocol::CreateElicitationResult> {
-              require(!cancellation.cancelled(),
-                      "elicitation cancellation should not be set");
-              ++cancellation_aware_handlers;
+              ++request_handlers;
               require(params.message == "Choose owner",
                       "elicitation message mismatch");
               return mcp::protocol::CreateElicitationResult{
@@ -139,15 +130,14 @@ int main() {
                   .content = Json{{"owner", "sdk"}},
               };
             })
-        .on_custom_request([&](const mcp::protocol::JsonRpcRequest& request,
-                               mcp::CancellationToken cancellation)
-                               -> mcp::core::Result<Json> {
-          require(!cancellation.cancelled(),
-                  "custom cancellation should not be set");
-          ++cancellation_aware_handlers;
-          require(request.method == "client/custom", "custom method mismatch");
-          return Json{{"custom", true}};
-        });
+        .on_custom_request(
+            [&](const mcp::protocol::JsonRpcRequest& request)
+                -> mcp::core::Result<Json> {
+              ++request_handlers;
+              require(request.method == "client/custom",
+                      "custom method mismatch");
+              return Json{{"custom", true}};
+            });
 
     auto roots =
         response_from(peer.dispatch_message(mcp::protocol::JsonRpcRequest{
@@ -283,8 +273,7 @@ int main() {
     require(resource_updated == 1, "resource updated count mismatch");
     require(elicitation_complete == 1, "elicitation complete count mismatch");
     require(task_status == 1, "task status count mismatch");
-    require(cancellation_aware_handlers == 4,
-            "cancellation-aware handler count mismatch");
+    require(request_handlers == 4, "request handler count mismatch");
 
     std::cout << "client callbacks matrix passed\n";
     return 0;

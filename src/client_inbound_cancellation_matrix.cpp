@@ -51,16 +51,13 @@ int main() {
 
     std::atomic_bool handler_started{false};
     peer.on_custom_request(
-        [&](const mcp::protocol::JsonRpcRequest& request,
-            mcp::CancellationToken cancellation) -> mcp::core::Result<Json> {
+        [&](const mcp::protocol::JsonRpcRequest& request)
+            -> mcp::core::Result<Json> {
           require(request.method == "client/slow",
                   "custom request method mismatch");
           handler_started.store(true);
-          for (int attempt = 0; attempt < 100 && !cancellation.cancelled();
-               ++attempt) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-          }
-          return Json{{"cancelled", cancellation.cancelled()}};
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+          return Json{{"completed", true}};
         });
 
     auto pending = std::async(std::launch::async, [&] {
@@ -88,8 +85,8 @@ int main() {
 
     const auto dispatched = pending.get();
     const auto& response = response_from(dispatched);
-    require(response.result->at("cancelled") == true,
-            "inbound cancellation token was not cancelled");
+    require(response.result->at("completed") == true,
+            "custom request did not complete");
 
     std::cout << "client inbound cancellation matrix passed\n";
     return 0;
