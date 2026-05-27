@@ -24,6 +24,7 @@ jobs:
         with:
           repository: caomengxuan666/cxxmcp
           path: MCPServer.cpp
+          submodules: true
 
       - name: Configure
         run: cmake -S cxxmcp-examples -B cxxmcp-examples/build -DCMAKE_BUILD_TYPE=Release
