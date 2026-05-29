@@ -61,6 +61,7 @@ jobs:
             -DCXXMCP_BUILD_EXAMPLES=OFF `
             -DCXXMCP_BUILD_TESTS=OFF `
             -DCXXMCP_BUILD_DOCS=OFF `
+            -DCXXMCP_ENABLE_HTTP=ON `
             "-DCMAKE_INSTALL_PREFIX=$prefix"
           cmake --build cxxmcp-sdk-build --config Release
           cmake --install cxxmcp-sdk-build --config Release --prefix "$prefix"
