@@ -70,7 +70,7 @@ npm start -- server --url http://127.0.0.1:3000/mcp --suite all
 
 Current summary:
 
-- 108 passed.
+- 109 passed.
 - 1 failed.
 
 Failing scenarios:
@@ -79,10 +79,16 @@ Failing scenarios:
 | --- | --- | --- |
 | `http-header-validation` | 11 passed, 1 failed | Conformance suite contradiction: test expects `Mcp-Method` required, but TypeScript SDK client doesn't send it |
 
-The single remaining failure (`ServerRejectsMissingMethodHeader`) is a known
-conformance suite issue — not a server bug. See
-[conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323)
-and [typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176).
+The single remaining failure (`ServerRejectsMissingMethodHeader`) is a **known
+upstream issue** — not a server bug. It cannot be resolved on the server side
+without breaking 32 other SDK-backed scenarios (the TypeScript SDK does not send
+`Mcp-Method`, so requiring it rejects all SDK client requests). Issues filed:
+
+- [conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323)
+- [typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176)
+
+**Resolution**: 109/1 is the expected final state until the TypeScript SDK
+implements SEP-2243 header support. No server-side workaround is appropriate.
 
 The previous input-required-result / MRTR failures now pass in the local
 all-suite run.
@@ -111,9 +117,9 @@ npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_co
 
 Current summary:
 
-- 426 passed.
-- 11 failed.
-- 1 warning.
+- 441 passed.
+- 2 failed.
+- 0 warnings.
 
 This build has `CXXMCP_AUTH_CRYPTO=NONE`, so
 `auth/client-credentials-jwt` is expected to remain failed because
@@ -129,8 +135,8 @@ npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build-auth-open
 
 OpenSSL current summary:
 
-- 428 passed.
-- 8 failed.
+- 447 passed.
+- 1 failed.
 - 0 warnings.
 
 Auth status in the OpenSSL build:
@@ -171,6 +177,8 @@ OpenSSL current all passing scenarios/checks:
 | `auth/*` tier/backcompat/draft/extension scenarios | all passed |
 | `sep-2322-client-request-state` | 5 passed, 0 failed |
 | `http-standard-headers` | 11 passed, 0 failed |
+| `http-custom-headers` | 18 passed, 0 failed |
+| `http-invalid-tool-headers` | 11 passed, 0 failed |
 | `json-schema-ref-no-deref` | 1 passed, 0 failed |
 
 OpenSSL current all failing scenarios:
@@ -178,15 +186,11 @@ OpenSSL current all failing scenarios:
 | Scenario | Result |
 | --- | --- |
 | `sse-retry` | 0 passed, 1 failed |
-| `http-custom-headers` | 0 passed, 5 failed |
-| `http-invalid-tool-headers` | 10 passed, 2 failed |
 
 Representative client stderr failures:
 
 ```text
 unsupported conformance client scenario: sse-retry
-unsupported conformance client scenario: http-custom-headers
-unsupported conformance client scenario: http-invalid-tool-headers
 ```
 
 ## Raw Protocol Probes
@@ -230,24 +234,24 @@ warnings.
 
 All-suite comparison:
 
-- Server all: C++ currently reports 108 passed and 1 failed versus RMCP 48
+- Server all: C++ currently reports 109 passed and 1 failed versus RMCP 48
   passed and 47 failed.
 - Client all: C++ produces a complete SDK-only summary. With the optional
-  OpenSSL auth backend enabled it reports 428 passed and 8 failed. RMCP
+  OpenSSL auth backend enabled it reports 447 passed and 1 failed. RMCP
   currently crashes the runner before an all-suite summary.
 
 ## Main SDK Gaps
 
-1. **Server `http-header-validation` (1 failure)**: `ServerRejectsMissingMethodHeader`
-   expects HTTP 400 when `Mcp-Method` header is missing. Our server correctly sends
-   `Mcp-Method` from the C++ SDK client, but the conformance runner's own TypeScript
-   SDK client (`@modelcontextprotocol/sdk` v1.29.0) does not send `Mcp-Method`. Making
-   `Mcp-Method` required breaks 32 SDK-backed scenarios. This is a conformance suite
-   contradiction, not a server bug. Filed as
+1. **Server `http-header-validation` (1 failure, upstream)**:
+   `ServerRejectsMissingMethodHeader` expects HTTP 400 when `Mcp-Method` header
+   is missing. Our C++ SDK client sends `Mcp-Method` correctly, but the
+   conformance runner's TypeScript SDK client (`@modelcontextprotocol/sdk`
+   v1.29.0) does not. Making `Mcp-Method` required breaks 32 SDK-backed
+   scenarios. This is a conformance suite contradiction, not a server bug.
+   Cannot be resolved server-side. Filed as
    [conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323)
    and [typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176).
-2. Client SSE retry and `Last-Event-ID` behavior.
+   **Expected to resolve upstream when TypeScript SDK implements SEP-2243.**
+2. Client SSE retry and `Last-Event-ID` behavior (SEP-1699, spec 2025-11-25).
 3. Client private_key_jwt requires the optional OpenSSL auth backend; the
    no-OpenSSL build deliberately reports that scenario unsupported.
-4. Client SEP-2243 custom parameter header mirroring and invalid
-   `x-mcp-header` tool handling.

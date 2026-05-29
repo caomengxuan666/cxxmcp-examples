@@ -294,6 +294,60 @@ void run_mrtr_client(const std::string& server_url) {
          "test_mrtr_no_result_type failed");
 }
 
+void run_http_custom_headers(const std::string& server_url) {
+  auto client = connect_client(server_url);
+  const auto tools = unwrap(client.peer().list_tools(), "tools/list failed");
+
+  // Call test_custom_headers with the expected arguments.
+  // The SDK automatically generates Mcp-Param-* headers from the cached schema.
+  Json arguments = {{"region", "us-west1"},
+                    {"priority", 42},
+                    {"verbose", false},
+                    {"debug", true},
+                    {"empty_val", ""},
+                    {"method_val", "test-method"},
+                    {"float_val", 3.14159},
+                    {"non_ascii_val", "Hello, \xe4\xb8\x96\xe7\x95\x8c"},
+                    {"whitespace_val", " padded "},
+                    {"leading_space_val", " us-west1"},
+                    {"trailing_space_val", "us-west1 "},
+                    {"internal_space_val", "us west 1"},
+                    {"control_char_val", "line1\nline2"},
+                    {"crlf_val", "line1\r\nline2"},
+                    {"tab_val", "\tindented"},
+                    {"query", "SELECT * FROM users"}};
+  unwrap(client.peer().call_tool("test_custom_headers", arguments),
+         "test_custom_headers failed");
+
+  // Call test_custom_headers_null (verbose=null → header omitted).
+  Json null_arguments = {{"region", "us-east1"},
+                         {"priority", 1},
+                         {"verbose", nullptr},
+                         {"query", "SELECT 1"}};
+  unwrap(client.peer().call_tool("test_custom_headers_null", null_arguments),
+         "test_custom_headers_null failed");
+}
+
+void run_http_invalid_tool_headers(const std::string& server_url) {
+  auto client = connect_client(server_url);
+  const auto tools = unwrap(client.peer().list_tools(), "tools/list failed");
+
+  // Find and call valid_tool — the SDK filters invalid tools via
+  // validate_tool_x_headers, but the harness must also avoid calling them.
+  bool found_valid = false;
+  for (const auto& tool : tools) {
+    auto entries = mcp::protocol::extract_x_mcp_headers(tool.input_schema);
+    if (tool.name == "valid_tool" &&
+        mcp::protocol::validate_tool_x_headers(entries)) {
+      found_valid = true;
+      unwrap(client.peer().call_tool("valid_tool", Json{{"region", "us-east1"}}),
+             "valid_tool failed");
+      break;
+    }
+  }
+  require(found_valid, "valid_tool not found or was incorrectly rejected");
+}
+
 #if defined(CXXMCP_EXAMPLES_ENABLE_AUTH)
 
 struct UrlParts {
@@ -975,6 +1029,10 @@ int main(int argc, char** argv) {
       run_http_standard_headers(server_url);
     } else if (scenario == "sep-2322-client-request-state") {
       run_mrtr_client(server_url);
+    } else if (scenario == "http-custom-headers") {
+      run_http_custom_headers(server_url);
+    } else if (scenario == "http-invalid-tool-headers") {
+      run_http_invalid_tool_headers(server_url);
     } else if (scenario.rfind("auth/", 0) == 0) {
       run_auth_scenario(server_url, scenario);
     } else {
