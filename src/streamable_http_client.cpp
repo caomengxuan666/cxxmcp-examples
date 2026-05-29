@@ -4,6 +4,7 @@
 #include <string_view>
 #include <utility>
 
+#include "cxxmcp/client.hpp"
 #include "cxxmcp/peer.hpp"
 #include "cxxmcp/service.hpp"
 

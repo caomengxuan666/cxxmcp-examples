@@ -8,6 +8,7 @@
 #include <thread>
 #include <utility>
 
+#include "cxxmcp/client.hpp"
 #include "cxxmcp/peer.hpp"
 #include "cxxmcp/server.hpp"
 #include "cxxmcp/service.hpp"
