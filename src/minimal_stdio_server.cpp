@@ -1,12 +1,14 @@
 #include <optional>
 #include <string>
 
+#include "cxxmcp/peer.hpp"
+#include "cxxmcp/run.hpp"
 #include "cxxmcp/server.hpp"
 
 int main() {
   using Json = mcp::protocol::Json;
 
-  return mcp::server::App::builder()
+  return mcp::ServerPeer::builder()
       .name("cxxmcp-minimal")
       .version("0.1.0")
       .instructions("Smallest useful stdio server: one tool, prompt, resource, and health request.")

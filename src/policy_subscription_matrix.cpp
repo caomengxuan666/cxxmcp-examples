@@ -62,7 +62,7 @@ class RejectAuth final : public mcp::server::AuthProvider {
 public:
   mcp::core::Result<mcp::server::AuthIdentity>
   authenticate(const mcp::server::AuthRequest &) override {
-    return std::unexpected(mcp::errors::make(
+    return mcp::core::unexpected(mcp::errors::make(
         mcp::protocol::ErrorCode::PermissionDenied, "token rejected"));
   }
 };

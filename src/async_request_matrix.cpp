@@ -70,7 +70,7 @@ int main() {
     require(configured.has_value(), "request executor configure failed");
 
     auto built =
-        mcp::server::App::builder()
+        mcp::ServerPeer::builder()
             .name("cxxmcp-async-matrix")
             .version("0.1.0")
             .tool(mcp::server::tool<Json, Json>("echo").handler(
@@ -145,7 +145,7 @@ int main() {
             .build();
     require(built.has_value(), "server build failed");
 
-    auto transport = std::make_unique<LoopbackTransport>(**built);
+    auto transport = std::make_unique<LoopbackTransport>(built->server());
     auto *transport_ptr = transport.get();
     mcp::ClientPeer peer(mcp::client::Client(std::move(transport)));
 

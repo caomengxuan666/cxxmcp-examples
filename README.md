@@ -36,6 +36,7 @@ request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
 | initialize / ping / initialized | `minimal_stdio_server`, `sdk_smoke`, `process_stdio_client_probe`, `http_gateway_runtime_matrix` |
 | tools/list, tools/get, tools/call | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, `async_request_matrix`, process/gateway probes |
 | typed tool args/results and JSON schemas | `typed_tool_server`, `workspace_server`, `log_triage_server`, `extension_plugin_adapter_matrix` |
+| official MCP conformance server/client surface | `conformance_everything_server`, `conformance_everything_client` |
 | task-backed tools and task list/get/result/cancel | `workspace_server`, `log_triage_server`, `sdk_smoke`, `task_cancel_matrix`, `server_to_client_context_matrix` |
 | prompts/list and prompts/get | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
 | resources/list and resources/read | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
@@ -97,6 +98,16 @@ run outside the SDK repository.
   It provides bounded file reads, regex search, workspace summaries, a review
   prompt, completion suggestions, sample generation, a summary resource, a file
   URI template, and task-capable read-only tools.
+- `cxxmcp_conformance_everything_server`: a streamable HTTP server for
+  `modelcontextprotocol/conformance` server-mode testing. It listens on
+  `http://127.0.0.1:3000/mcp` by default, or pass a port as argv[1] / set
+  `PORT` / set `CXXMCP_EVERYTHING_PORT`.
+- `cxxmcp_conformance_everything_client`: a command-style client harness for
+  `modelcontextprotocol/conformance` client-mode testing. The conformance
+  runner sets `MCP_CONFORMANCE_SCENARIO` and appends the scenario server URL.
+  The harness covers initialize, tools_call, elicitation defaults, request
+  metadata, OAuth/auth, MRTR request state, standard HTTP headers, and JSON
+  Schema network `$ref` handling through the SDK client.
 - `cxxmcp_log_triage_server`: a stdio MCP server for incident/log triage. It
   summarizes severity counts, extracts matching lines, exposes a playbook
   resource, renders an incident-report prompt, provides completion suggestions,
@@ -121,7 +132,8 @@ run outside the SDK repository.
   limiters.
 - `cxxmcp_extension_plugin_adapter_matrix`: demonstrates the plugin SDK and
   adapter extension contracts by registering a plugin-backed tool into a normal
-  `ToolRegistry`.
+  `ToolRegistry`. This target is built only when the consumed SDK package still
+  exports `cxxmcp::plugin_sdk` and `cxxmcp::adapters`.
 - `cxxmcp_server_to_client_context_matrix`: invokes client roots, sampling,
   elicitation, task listing, and elicitation-complete notification from inside
   a server tool through `ToolContext::client()`.
@@ -186,6 +198,12 @@ The adjacent-source build enables the gateway target so the HTTP/runtime and
 app service examples are compiled and tested. If an installed package does not
 include `cxxmcp::gateway`, the gateway examples are skipped by CMake.
 
+CI runs both modes. The installed-package job first installs the SDK into a
+temporary prefix and then configures this repository with
+`CXXMCP_EXAMPLES_USE_ADJACENT_SDK=OFF`, so it proves normal
+`find_package(cxxmcp CONFIG REQUIRED)` consumption instead of relying on
+`add_subdirectory`.
+
 For a focused check while developing against a local SDK checkout:
 
 ```powershell
@@ -200,6 +218,74 @@ the server installs `AuthProvider`, `HttpTransportOptions::auth_challenge`, and
 `Client::StreamableHttpEndpoint::auth_header = "valid-token"` through
 `ClientPeer::connect_streamable_http`, which the SDK sends as
 `Authorization: Bearer valid-token`.
+
+## MCP Conformance
+
+The conformance harness is maintained separately at
+`modelcontextprotocol/conformance`. Start the C++ everything server first:
+
+```powershell
+cmake --build build --target cxxmcp_conformance_everything_server --config Release
+.\build\cxxmcp_conformance_everything_server.exe 3000
+```
+
+Then run the active server suite from a conformance checkout:
+
+```powershell
+npm start -- server --url http://127.0.0.1:3000/mcp --suite active --verbose
+```
+
+Current validation against the active suite is 40 passing checks and 0 failures.
+No expected-failure baseline is currently required.
+
+To validate the latest dated MCP spec without draft-only 2026 scenarios:
+
+```powershell
+npm start -- server --url http://127.0.0.1:3000/mcp --suite all --spec-version 2025-11-25
+```
+
+Current server validation for `2025-11-25` is 47 passing checks and 0 failures.
+Current server validation for the latest all-suite run is 108 passing checks
+and 1 failure. The remaining failure is the SEP-2243
+`ServerRejectsMissingMethodHeader` check: strict `Mcp-Method` rejection would
+break the TypeScript SDK v1.29.0 conformance client, which does not yet send
+that required header. The C++ client transport sends `Mcp-Method`; strict
+server enforcement is tracked separately from the default compatibility mode.
+Upstream tracking:
+[typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176)
+and
+[conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323).
+
+For client-mode conformance, build the client harness and run suites from the
+conformance checkout:
+
+```powershell
+cmake --build build --target cxxmcp_conformance_everything_client --config Release
+cd C:\Users\cmx\repo\conformance
+npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite core
+npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite draft
+npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite all
+```
+
+Current client validation without a client baseline:
+
+- OpenSSL/vcpkg all suite: 428 passing checks and 8 failing checks.
+- `2025-11-25` suite: 224 passing checks and 1 failing check.
+- Tier auth suite: 217 passing checks and 0 failures.
+
+The client auth harness passes the current tier, back-compat, draft, and
+extension auth scenarios when built with `CXXMCP_AUTH_CRYPTO=OpenSSL`,
+including private_key_jwt client credentials and enterprise-managed
+authorization. The remaining client all-suite failures are SSE retry /
+`Last-Event-ID` behavior and SEP-2243 custom header validation cases.
+
+In local `--suite all` comparisons against the same runner, the C++ server is
+materially ahead of the saved RMCP reference run: 108/1 for the C++ server all
+suite versus 48/47 for RMCP. The C++ client all suite produces a complete
+428/8 summary; the RMCP client all run did not produce an all-suite summary
+because the runner crashed after RMCP returned an empty/non-JSON response. See
+`CONFORMANCE_STATUS.md` for exact commands, known exceptions, and raw stderr
+notes.
 
 ## Codex Config
 

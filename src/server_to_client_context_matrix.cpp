@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 
+#include "cxxmcp/peer.hpp"
 #include "cxxmcp/server.hpp"
 
 namespace {
@@ -139,7 +140,7 @@ class InteractiveClientTransport final : public mcp::server::Transport {
 int main() {
   try {
     auto built =
-        mcp::server::App::builder()
+        mcp::ServerPeer::builder()
             .name("cxxmcp-server-to-client-context")
             .version("0.1.0")
             .tool(
@@ -208,7 +209,7 @@ int main() {
     mcp::server::SessionContext context{.session_id = "interactive-session",
                                         .remote_address = "loopback",
                                         .transport = &transport};
-    auto response = (*built)->handle_request(
+    auto response = built->handle_request(
         mcp::protocol::JsonRpcRequest{
             .method = std::string(mcp::protocol::ToolsCallMethod),
             .params = mcp::protocol::tool_call_to_json(mcp::protocol::ToolCall{

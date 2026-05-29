@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "cxxmcp/peer.hpp"
+#include "cxxmcp/run.hpp"
 #include "cxxmcp/server.hpp"
 
 namespace examples {
@@ -445,12 +447,12 @@ int main(int argc, char** argv) {
       examples::fs::path(argc > 1 ? argv[1] : (env_root.empty() ? "." : env_root));
   default_root = examples::resolve_root({}, default_root);
 
-  return mcp::server::App::builder()
+  return mcp::ServerPeer::builder()
       .name("cxxmcp-workspace")
       .version("0.1.0")
       .instructions("Bounded workspace inspection tools for code agents.")
       .stdio()
-      .tasks(mcp::server::TaskOperationProcessorOptions{
+      .task_manager(mcp::server::TaskOperationProcessorOptions{
           .worker_count = 2,
           .queue_size = 32,
           .poll_interval = std::int64_t{1},

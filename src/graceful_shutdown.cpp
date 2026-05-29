@@ -69,7 +69,7 @@ private:
 
 int main() {
   try {
-    auto server = mcp::server::App::builder()
+    auto server = mcp::ServerPeer::builder()
                       .name("graceful-shutdown")
                       .version("0.1.0")
                       .tool(mcp::server::tool<Json, Json>("echo").handler(

@@ -51,6 +51,10 @@ public:
     incoming.push_back(mcp::protocol::JsonRpcMessage{std::move(request)});
   }
 
+  void push(mcp::protocol::JsonRpcNotification notification) {
+    incoming.push_back(mcp::protocol::JsonRpcMessage{std::move(notification)});
+  }
+
   std::deque<RxMessage> incoming;
   std::vector<TxMessage> sent;
   bool closed = false;
@@ -69,7 +73,7 @@ response_at(const ScriptedServerTransport &transport, std::size_t index) {
 
 int main() {
   try {
-    auto server = mcp::server::App::builder()
+    auto server = mcp::ServerPeer::builder()
                       .name("native-transport-server")
                       .version("0.1.0")
                       .tool(mcp::server::tool<Json, Json>("echo").handler(
@@ -84,6 +88,10 @@ int main() {
         .params = Json{{"protocolVersion",
                         std::string(mcp::protocol::McpProtocolVersion)}},
         .id = std::int64_t{1},
+    });
+    transport.push(mcp::protocol::JsonRpcNotification{
+        .method = std::string(mcp::protocol::InitializedMethod),
+        .params = Json::object(),
     });
     transport.push(mcp::protocol::JsonRpcRequest{
         .method = std::string(mcp::protocol::ToolsListMethod),

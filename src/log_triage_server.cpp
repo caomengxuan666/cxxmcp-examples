@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "cxxmcp/peer.hpp"
+#include "cxxmcp/run.hpp"
 #include "cxxmcp/server.hpp"
 
 namespace examples {
@@ -227,12 +229,12 @@ struct SchemaTraits<examples::FindResult> {
 }  // namespace mcp::protocol
 
 int main() {
-  return mcp::server::App::builder()
+  return mcp::ServerPeer::builder()
       .name("cxxmcp-log-triage")
       .version("0.1.0")
       .instructions("Log and incident triage tools for local diagnostics.")
       .stdio()
-      .tasks(mcp::server::TaskOperationProcessorOptions{
+      .task_manager(mcp::server::TaskOperationProcessorOptions{
           .worker_count = 2,
           .queue_size = 32,
           .poll_interval = std::int64_t{1},

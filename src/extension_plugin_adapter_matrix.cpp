@@ -59,7 +59,7 @@ public:
                          });
                        });
       if (!added) {
-        return std::unexpected(added.error());
+        return mcp::core::unexpected(added.error());
       }
     }
     return mcp::core::Unit{};

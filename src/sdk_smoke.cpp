@@ -68,11 +68,11 @@ int main() {
     std::size_t logging_events = 0;
 
     auto built =
-        mcp::server::App::builder()
+        mcp::ServerPeer::builder()
             .name("cxxmcp-examples-smoke")
             .version("0.1.0")
             .instructions("In-process downstream SDK validation server.")
-            .tasks(mcp::server::TaskOperationProcessorOptions{
+            .task_manager(mcp::server::TaskOperationProcessorOptions{
                 .worker_count = 1,
                 .queue_size = 8,
                 .poll_interval = std::int64_t{1},
@@ -156,7 +156,7 @@ int main() {
             .build();
     require(built.has_value(), "server build failed");
 
-    auto transport = std::make_unique<LoopbackTransport>(**built);
+    auto transport = std::make_unique<LoopbackTransport>(built->server());
     auto* transport_ptr = transport.get();
     mcp::ClientPeer peer(mcp::client::Client(std::move(transport)));
 

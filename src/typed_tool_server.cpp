@@ -2,6 +2,8 @@
 #include <string>
 #include <utility>
 
+#include "cxxmcp/peer.hpp"
+#include "cxxmcp/run.hpp"
 #include "cxxmcp/server.hpp"
 
 namespace examples {
@@ -54,7 +56,7 @@ template <> struct SchemaTraits<examples::AddResult> {
 } // namespace mcp::protocol
 
 int main() {
-  return mcp::server::App::builder()
+  return mcp::ServerPeer::builder()
       .name("cxxmcp-typed-tool")
       .version("0.1.0")
       .instructions("Typed stdio server exposing a schema-backed math tool.")

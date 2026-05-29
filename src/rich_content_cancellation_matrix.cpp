@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "cxxmcp/cancellation.hpp"
+#include "cxxmcp/peer.hpp"
 #include "cxxmcp/server.hpp"
 
 namespace {
@@ -20,7 +21,7 @@ void require(bool condition, std::string_view message) {
 int main() {
   try {
     auto built =
-        mcp::server::App::builder()
+        mcp::ServerPeer::builder()
             .name("rich-content-cancellation")
             .version("0.1.0")
             .tool(mcp::server::tool<Json, Json>("content.rich")
@@ -67,7 +68,7 @@ int main() {
     require(built.has_value(), "server build failed");
 
     const auto rich =
-        (*built)->call_tool("content.rich", Json::object(), "rich-session");
+        built->call_tool("content.rich", Json::object(), "rich-session");
     require(rich.has_value(), "rich content tool failed");
     require(rich->content.size() == 5, "rich content block count mismatch");
     require(rich->content.at(1).is_image(), "image block missing");
@@ -80,7 +81,7 @@ int main() {
 
     mcp::CancellationSource cancellation;
     cancellation.cancel();
-    const auto cancelled = (*built)->tools().call(
+    const auto cancelled = built->server().tools().call(
         mcp::protocol::ToolCall{.name = "cancel.observe",
                                 .arguments = Json::object()},
         mcp::server::SessionContext{.session_id = "cancel-session"},

@@ -80,6 +80,8 @@ int main() {
             .command = CXXMCP_EXAMPLES_CHILD_EXE});
     require(compat_peer.initialize("cxxmcp-connect-stdio", "0.1.0").has_value(),
             "connect_stdio initialize failed");
+    require(compat_peer.notify_initialized().has_value(),
+            "connect_stdio initialized notification failed");
     const auto compat_tools = compat_peer.list_tools();
     require(compat_tools.has_value() && !compat_tools->empty(),
             "connect_stdio tools/list failed");

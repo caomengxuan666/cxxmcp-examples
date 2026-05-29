@@ -72,7 +72,7 @@ int main() {
     require(configured.has_value(), "request executor configure failed");
 
     auto built =
-        mcp::server::App::builder()
+        mcp::ServerPeer::builder()
             .name("timeout-cancellation-demo")
             .version("0.1.0")
             .raw_request([](const mcp::protocol::JsonRpcRequest &request)
@@ -86,7 +86,7 @@ int main() {
             .build();
     require(built.has_value(), "server build failed");
 
-    auto transport = std::make_unique<LoopbackTransport>(**built);
+    auto transport = std::make_unique<LoopbackTransport>(built->server());
     auto *transport_ptr = transport.get();
     mcp::ClientPeer peer{mcp::client::Client(std::move(transport))};
 

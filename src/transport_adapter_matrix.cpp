@@ -605,7 +605,7 @@ void test_client_contract_transport_adapter_failure_paths() {
     const auto started =
         adapter.start([](const mcp::protocol::JsonRpcRequest &)
                           -> mcp::core::Result<mcp::protocol::JsonRpcResponse> {
-          return std::unexpected(mcp::core::Error{
+          return mcp::core::unexpected(mcp::core::Error{
               static_cast<int>(mcp::protocol::ErrorCode::InternalError),
               "client handler boom",
               {},
@@ -766,7 +766,7 @@ void test_server_contract_transport_adapter_failure_paths() {
         adapter.start([](const mcp::protocol::JsonRpcRequest &,
                          const mcp::server::SessionContext &)
                           -> mcp::core::Result<mcp::protocol::JsonRpcResponse> {
-          return std::unexpected(mcp::core::Error{
+          return mcp::core::unexpected(mcp::core::Error{
               static_cast<int>(mcp::protocol::ErrorCode::InternalError),
               "server handler boom",
               {},

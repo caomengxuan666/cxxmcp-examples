@@ -59,10 +59,10 @@ bool wait_for_status(mcp::ClientPeer &peer, std::string_view task_id,
 int main() {
   try {
     auto built =
-        mcp::server::App::builder()
+        mcp::ServerPeer::builder()
             .name("task-cancel")
             .version("0.1.0")
-            .tasks(mcp::server::TaskOperationProcessorOptions{
+            .task_manager(mcp::server::TaskOperationProcessorOptions{
                 .worker_count = 1,
                 .queue_size = 8,
                 .poll_interval = std::int64_t{1},
@@ -83,7 +83,8 @@ int main() {
             .build();
     require(built.has_value(), "server build failed");
 
-    auto loopback_transport = std::make_unique<LoopbackTransport>(**built);
+    auto loopback_transport =
+        std::make_unique<LoopbackTransport>(built->server());
     mcp::ClientPeer peer(mcp::client::Client(std::move(loopback_transport)));
     auto task = peer.call_tool_task(mcp::protocol::ToolCall{
         .name = "slow.cancel",

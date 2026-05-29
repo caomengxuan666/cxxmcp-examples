@@ -73,10 +73,13 @@ cxxmcp_example(cxxmcp_async_request_matrix)
 add_executable(cxxmcp_policy_subscription_matrix src/policy_subscription_matrix.cpp)
 cxxmcp_example(cxxmcp_policy_subscription_matrix)
 
-add_executable(cxxmcp_extension_plugin_adapter_matrix src/extension_plugin_adapter_matrix.cpp)
-target_compile_features(cxxmcp_extension_plugin_adapter_matrix PRIVATE cxx_std_20)
-target_link_libraries(cxxmcp_extension_plugin_adapter_matrix
-    PRIVATE cxxmcp::sdk cxxmcp::plugin_sdk cxxmcp::adapters)
+if(TARGET cxxmcp::plugin_sdk AND TARGET cxxmcp::adapters)
+    add_executable(cxxmcp_extension_plugin_adapter_matrix
+        src/extension_plugin_adapter_matrix.cpp)
+    target_compile_features(cxxmcp_extension_plugin_adapter_matrix PRIVATE cxx_std_20)
+    target_link_libraries(cxxmcp_extension_plugin_adapter_matrix
+        PRIVATE cxxmcp::sdk cxxmcp::plugin_sdk cxxmcp::adapters)
+endif()
 
 
 if(TARGET cxxmcp::gateway OR TARGET mcp_gateway)
@@ -135,6 +138,26 @@ endif()
 add_executable(cxxmcp_workspace_server src/workspace_server.cpp)
 cxxmcp_example(cxxmcp_workspace_server)
 
+add_executable(cxxmcp_conformance_everything_server
+    src/conformance_everything_server.cpp)
+cxxmcp_example(cxxmcp_conformance_everything_server)
+
+add_executable(cxxmcp_conformance_everything_client
+    src/conformance_everything_client.cpp)
+cxxmcp_example(cxxmcp_conformance_everything_client)
+if(TARGET cxxmcp::auth)
+    target_link_libraries(cxxmcp_conformance_everything_client
+        PRIVATE cxxmcp::auth)
+    target_compile_definitions(cxxmcp_conformance_everything_client
+        PRIVATE CXXMCP_EXAMPLES_ENABLE_AUTH=1)
+endif()
+if(TARGET cxxmcp::auth_openssl)
+    target_link_libraries(cxxmcp_conformance_everything_client
+        PRIVATE cxxmcp::auth_openssl)
+    target_compile_definitions(cxxmcp_conformance_everything_client
+        PRIVATE CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL=1)
+endif()
+
 add_executable(cxxmcp_log_triage_server src/log_triage_server.cpp)
 cxxmcp_example(cxxmcp_log_triage_server)
 
@@ -154,7 +177,9 @@ add_test(NAME cxxmcp_transport_stdio_matrix COMMAND cxxmcp_transport_stdio_matri
 add_test(NAME cxxmcp_process_stdio_client_probe COMMAND cxxmcp_process_stdio_client_probe)
 add_test(NAME cxxmcp_async_request_matrix COMMAND cxxmcp_async_request_matrix)
 add_test(NAME cxxmcp_policy_subscription_matrix COMMAND cxxmcp_policy_subscription_matrix)
-add_test(NAME cxxmcp_extension_plugin_adapter_matrix COMMAND cxxmcp_extension_plugin_adapter_matrix)
+if(TARGET cxxmcp_extension_plugin_adapter_matrix)
+    add_test(NAME cxxmcp_extension_plugin_adapter_matrix COMMAND cxxmcp_extension_plugin_adapter_matrix)
+endif()
 add_test(NAME cxxmcp_server_to_client_context_matrix COMMAND cxxmcp_server_to_client_context_matrix)
 add_test(NAME cxxmcp_handler_interface_matrix COMMAND cxxmcp_handler_interface_matrix)
 add_test(NAME cxxmcp_native_server_transport_matrix COMMAND cxxmcp_native_server_transport_matrix)
@@ -182,7 +207,6 @@ set(CXXMCP_EXAMPLE_TESTS
     cxxmcp_process_stdio_client_probe
     cxxmcp_async_request_matrix
     cxxmcp_policy_subscription_matrix
-    cxxmcp_extension_plugin_adapter_matrix
     cxxmcp_server_to_client_context_matrix
     cxxmcp_handler_interface_matrix
     cxxmcp_native_server_transport_matrix
@@ -194,6 +218,9 @@ set(CXXMCP_EXAMPLE_TESTS
     cxxmcp_task_cancel_matrix
     cxxmcp_transport_adapter_matrix)
 
+if(TARGET cxxmcp_extension_plugin_adapter_matrix)
+    list(APPEND CXXMCP_EXAMPLE_TESTS cxxmcp_extension_plugin_adapter_matrix)
+endif()
 if(TARGET cxxmcp_runtime_services_matrix)
     list(APPEND CXXMCP_EXAMPLE_TESTS cxxmcp_runtime_services_matrix)
 endif()

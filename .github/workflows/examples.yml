@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.os }}-${{ matrix.mode }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
@@ -14,7 +14,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            mode: adjacent-source
+          - os: windows-latest
+            mode: adjacent-source
+          - os: macos-latest
+            mode: adjacent-source
+          - os: ubuntu-latest
+            mode: installed-package
+          - os: windows-latest
+            mode: installed-package
+          - os: macos-latest
+            mode: installed-package
 
     steps:
       - name: Checkout examples
@@ -30,11 +42,69 @@ jobs:
           ref: master
           submodules: recursive
 
+      - name: Install cxxmcp SDK
+        if: matrix.mode == 'installed-package'
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:GITHUB_WORKSPACE "cxxmcp-install"
+          cmake `
+            -S MCPServer.cpp `
+            -B cxxmcp-sdk-build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCXXMCP_BUILD_SDK=ON `
+            -DCXXMCP_BUILD_CLIENT=ON `
+            -DCXXMCP_BUILD_SERVER=ON `
+            -DCXXMCP_BUILD_RUNTIME=OFF `
+            -DCXXMCP_BUILD_APP=OFF `
+            -DCXXMCP_BUILD_GATEWAY=OFF `
+            -DCXXMCP_BUILD_CLI=OFF `
+            -DCXXMCP_BUILD_EXAMPLES=OFF `
+            -DCXXMCP_BUILD_TESTS=OFF `
+            -DCXXMCP_BUILD_DOCS=OFF `
+            "-DCMAKE_INSTALL_PREFIX=$prefix"
+          cmake --build cxxmcp-sdk-build --config Release
+          cmake --install cxxmcp-sdk-build --config Release --prefix "$prefix"
+
       - name: Configure
-        run: cmake -S cxxmcp-examples -B cxxmcp-examples/build -DCMAKE_BUILD_TYPE=Release -DCXXMCP_EXAMPLES_SDK_SOURCE_DIR="${{ github.workspace }}/MCPServer.cpp"
+        shell: pwsh
+        run: |
+          if ("${{ matrix.mode }}" -eq "installed-package") {
+            $prefix = Join-Path $env:GITHUB_WORKSPACE "cxxmcp-install"
+            cmake `
+              -S cxxmcp-examples `
+              -B cxxmcp-examples/build `
+              -DCMAKE_BUILD_TYPE=Release `
+              -DCXXMCP_EXAMPLES_USE_ADJACENT_SDK=OFF `
+              "-DCMAKE_PREFIX_PATH=$prefix"
+          } else {
+            cmake `
+              -S cxxmcp-examples `
+              -B cxxmcp-examples/build `
+              -DCMAKE_BUILD_TYPE=Release `
+              "-DCXXMCP_EXAMPLES_SDK_SOURCE_DIR=${{ github.workspace }}/MCPServer.cpp"
+          }
 
       - name: Build
         run: cmake --build cxxmcp-examples/build --config Release
 
       - name: Test
-        run: ctest --test-dir cxxmcp-examples/build -C Release --output-on-failure --timeout 60
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path cxxmcp-examples/build/test-results | Out-Null
+          ctest `
+            --test-dir cxxmcp-examples/build `
+            -C Release `
+            --output-on-failure `
+            --timeout 60 `
+            --output-junit cxxmcp-examples/build/test-results/examples.xml
+
+      - name: Upload example evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cxxmcp-examples-${{ matrix.mode }}-${{ matrix.os }}
+          path: |
+            cxxmcp-examples/build/CMakeCache.txt
+            cxxmcp-examples/build/test-results/examples.xml
+            cxxmcp-examples/build/Testing/Temporary/*.log
+          if-no-files-found: warn
