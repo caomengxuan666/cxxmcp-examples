@@ -1,6 +1,6 @@
 # MCP Conformance Status
 
-Date: 2026-05-29 (updated)
+Date: 2026-05-29 (updated — SSE retry fixed)
 
 This document records the current server/client conformance status for the C++
 SDK examples. It intentionally separates real SDK coverage from raw protocol
@@ -117,8 +117,8 @@ npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_co
 
 Current summary:
 
-- 441 passed.
-- 2 failed.
+- 442 passed.
+- 1 failed.
 - 0 warnings.
 
 This build has `CXXMCP_AUTH_CRYPTO=NONE`, so
@@ -135,8 +135,8 @@ npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build-auth-open
 
 OpenSSL current summary:
 
-- 447 passed.
-- 1 failed.
+- 448 passed.
+- 0 failed.
 - 0 warnings.
 
 Auth status in the OpenSSL build:
@@ -159,12 +159,8 @@ npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build-auth-open
 Current summary:
 
 - 224 passed.
-- 1 failed.
+- 0 failed.
 - 0 warnings.
-
-Only failing 2025-11-25 scenario:
-
-- `sse-retry`: 0 passed, 1 failed.
 
 OpenSSL current all passing scenarios/checks:
 
@@ -180,17 +176,9 @@ OpenSSL current all passing scenarios/checks:
 | `http-custom-headers` | 18 passed, 0 failed |
 | `http-invalid-tool-headers` | 11 passed, 0 failed |
 | `json-schema-ref-no-deref` | 1 passed, 0 failed |
+| `sse-retry` | 3 passed, 0 failed |
 
-OpenSSL current all failing scenarios:
-
-| Scenario | Result |
-| --- | --- |
-| `sse-retry` | 0 passed, 1 failed |
-
-Representative client stderr failures:
-
-```text
-unsupported conformance client scenario: sse-retry
+No failing client scenarios in the OpenSSL build.
 ```
 
 ## Raw Protocol Probes
@@ -237,7 +225,7 @@ All-suite comparison:
 - Server all: C++ currently reports 109 passed and 1 failed versus RMCP 48
   passed and 47 failed.
 - Client all: C++ produces a complete SDK-only summary. With the optional
-  OpenSSL auth backend enabled it reports 447 passed and 1 failed. RMCP
+  OpenSSL auth backend enabled it reports 448 passed and 0 failed. RMCP
   currently crashes the runner before an all-suite summary.
 
 ## Main SDK Gaps
@@ -252,6 +240,5 @@ All-suite comparison:
    [conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323)
    and [typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176).
    **Expected to resolve upstream when TypeScript SDK implements SEP-2243.**
-2. Client SSE retry and `Last-Event-ID` behavior (SEP-1699, spec 2025-11-25).
-3. Client private_key_jwt requires the optional OpenSSL auth backend; the
+2. Client private_key_jwt requires the optional OpenSSL auth backend; the
    no-OpenSSL build deliberately reports that scenario unsupported.

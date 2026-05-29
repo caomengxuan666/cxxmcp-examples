@@ -348,6 +348,16 @@ void run_http_invalid_tool_headers(const std::string& server_url) {
   require(found_valid, "valid_tool not found or was incorrectly rejected");
 }
 
+void run_sse_retry(const std::string& server_url) {
+  auto client = connect_client(server_url);
+  const auto tools = unwrap(client.peer().list_tools(), "tools/list failed");
+  // Call test_reconnection — the server responds with an SSE stream containing
+  // a priming event (retry hint) and closes the stream. The SDK client must
+  // wait the retry duration and reconnect via GET with Last-Event-ID.
+  unwrap(client.peer().call_tool("test_reconnection", Json::object()),
+         "test_reconnection failed");
+}
+
 #if defined(CXXMCP_EXAMPLES_ENABLE_AUTH)
 
 struct UrlParts {
@@ -1033,6 +1043,8 @@ int main(int argc, char** argv) {
       run_http_custom_headers(server_url);
     } else if (scenario == "http-invalid-tool-headers") {
       run_http_invalid_tool_headers(server_url);
+    } else if (scenario == "sse-retry") {
+      run_sse_retry(server_url);
     } else if (scenario.rfind("auth/", 0) == 0) {
       run_auth_scenario(server_url, scenario);
     } else {
@@ -1041,7 +1053,8 @@ int main(int argc, char** argv) {
 
     std::cout << "conformance client scenario passed: " << scenario << '\n';
     // Force exit to avoid hanging on SSE connection cleanup.
-    std::exit(0);
+    std::fflush(nullptr);
+    std::_Exit(0);
   } catch (const std::exception& ex) {
     std::cerr << "conformance everything client failed: " << ex.what() << '\n';
     return 1;
