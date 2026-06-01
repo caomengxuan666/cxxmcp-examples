@@ -3,6 +3,7 @@ out/
 .cache/
 .vs/
 .vscode/
+.claude/
 CMakeUserPresets.json
 *.user
 *.log

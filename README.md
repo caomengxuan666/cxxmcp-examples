@@ -5,76 +5,72 @@
 [![MCP](https://img.shields.io/badge/protocol-Model%20Context%20Protocol-111827.svg)](https://modelcontextprotocol.io/)
 [![SDK](https://img.shields.io/badge/upstream-cxxmcp-0F766E.svg)](https://github.com/caomengxuan666/cxxmcp)
 
-Application-style examples and downstream validation for the
+Copyable application-style examples and downstream validation for the
 [`cxxmcp`](https://github.com/caomengxuan666/cxxmcp) C++ MCP SDK.
 
 This repository is intentionally separate from the SDK source tree. It consumes
 `cxxmcp` like an application author would: through CMake targets, public
-headers, real executables, and end-to-end probes. The examples start with small
-stdio servers, then move into SDK-first `ClientPeer` / `ServerPeer` /
-`Service` surfaces such as async requests, role-generic transports, direct
-HTTP/SSE, task cancellation, plugin adapters, gateway runtime, and app service
-management.
+headers, real executables, and end-to-end probes.
 
 ## Repository Role
 
 Use this repository when you want to:
 
-- Learn the SDK from small examples through advanced integration patterns.
+- Copy a small, working C++ MCP program and adapt it into an application.
+- Learn the SDK from stdio servers through HTTP clients, task cancellation,
+  typed tools, subscriptions, callbacks, and transport adapters.
 - Validate that an installed or adjacent `cxxmcp` SDK can be consumed by a
   downstream CMake project.
-- Exercise realistic MCP client/server behavior beyond isolated unit tests.
-- Smoke-test gateway/runtime and app-service APIs outside the SDK repository.
+- Exercise realistic MCP client/server behavior beyond isolated SDK unit tests.
 
-## What This Validates
+## Examples First
 
-The suite is organized from small authoring examples to protocol, transport,
-request-lifecycle, policy, extension, gateway/runtime, and app-service coverage.
+The `examples/` tree is the main entry point. It contains copyable programs;
+each one builds as an executable with a `cxxmcp_` target name and is kept small
+enough to read as downstream application code.
 
-| MCP / SDK surface | Example coverage |
-| --- | --- |
-| initialize / ping / initialized | `minimal_stdio_server`, `sdk_smoke`, `process_stdio_client_probe`, `http_gateway_runtime_matrix` |
-| tools/list, tools/get, tools/call | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, `async_request_matrix`, process/gateway probes |
-| typed tool args/results and JSON schemas | `typed_tool_server`, `workspace_server`, `log_triage_server`, `extension_plugin_adapter_matrix` |
-| official MCP conformance server/client surface | `conformance_everything_server`, `conformance_everything_client` |
-| task-backed tools and task list/get/result/cancel | `workspace_server`, `log_triage_server`, `sdk_smoke`, `task_cancel_matrix`, `server_to_client_context_matrix` |
-| prompts/list and prompts/get | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
-| resources/list and resources/read | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
-| resource templates | `workspace_server`, `sdk_smoke`, `async_request_matrix` |
-| resources/subscribe, resources/unsubscribe, resource updated notifications | `policy_subscription_matrix`, `client_subscription_helper_matrix` |
-| completion/complete raw and typed helper APIs | `workspace_server`, `log_triage_server`, `sdk_smoke`, `async_request_matrix` |
-| sampling/createMessage server and client-side callback | `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix`, `async_request_matrix` |
-| elicitation/create client-side callback and schema builder | `client_callbacks_matrix` |
-| outbound elicitation/create typed and async calls | `elicitation_client`, `async_request_matrix` |
-| roots/list and roots list-changed | `client_callbacks_matrix` |
-| logging/setLevel and logging notifications | `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix` |
-| cancellation, progress, list-changed, elicitation-complete, task-status notifications | `timeout_cancellation_client`, `client_inbound_cancellation_matrix`, `client_callbacks_matrix`, `sdk_smoke`, `async_request_matrix` |
-| raw/custom requests and notifications | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, `client_callbacks_matrix` |
-| RequestOptions, RequestHandle, async helpers, timeout/cancel, list_all helpers and cursor pagination | `timeout_cancellation_client`, `async_request_matrix`, `pagination_cursor_matrix`, `sdk_smoke` |
-| role-generic transport contract | `transport_stdio_matrix`, `transport_adapter_matrix` |
-| child-process stdio transport, `ClientPeer::connect_stdio`, and `mcp::serve` | `process_stdio_client_probe` |
-| standalone streamable HTTP client | `streamable_http_client` |
-| streamable HTTP client/server via gateway runtime | `http_gateway_runtime_matrix` |
-| direct streamable HTTP server/client and legacy SSE client path | `direct_http_legacy_sse_matrix` |
-| HTTP auth-lite: Authorization header, auth identity, 401 unauthorized mapping, WWW-Authenticate configuration | `http_auth_lite_matrix`, `policy_subscription_matrix` |
-| auth provider and rate limiter hooks | `policy_subscription_matrix`, `http_auth_lite_matrix` |
-| plugin SDK and adapter extension points | `extension_plugin_adapter_matrix` |
-| client/server legacy transport adapters and role-generic contract adapters | `transport_adapter_matrix` |
-| runtime/gateway layer | `http_gateway_runtime_matrix`, `runtime_services_matrix` |
-| server handler uses `ToolContext::client()` / `SessionContext::client()` | `server_to_client_context_matrix` |
-| `ClientHandler` / `ClientHandlerInterface` and `ServerHandler` / `ServerHandlerInterface` | `handler_interface_matrix` |
-| graceful service shutdown and cancellation | `graceful_shutdown`, `process_stdio_client_probe`, `direct_http_legacy_sse_matrix` |
-| custom role-generic `transport::ServerTransport` with `ServerPeer::serve_transport` | `native_server_transport_matrix` |
-| rich content blocks: image, audio, embedded resource, resource link, annotations, `_meta` | `rich_content_cancellation_matrix` |
-| server-side cooperative cancellation through `ToolContext::cancelled()` | `rich_content_cancellation_matrix`, `task_cancel_matrix` |
-| app service layer: memory/json stores, import/export, config, readiness/status, onboarding, exposure/server management | `runtime_services_matrix` |
+The `validation/` tree has a different job: downstream probes, matrices, smoke
+tests, and conformance harnesses that prove SDK consumption and behavior across
+public feature families. See [`docs/validation.md`](docs/validation.md) for the
+full validation map.
 
-This is not a replacement for the SDK's unit tests. It intentionally does not
-try to call every overload or every DTO serializer one by one; it covers each
-public feature family with representative downstream code that must compile and
-run outside the SDK repository.
+Start here:
+
+- `examples/basic/minimal_stdio_server.cpp`: smallest useful stdio server with
+  initialize, one tool, one prompt, one resource, and a raw health request.
+- `examples/basic/typed_tool_server.cpp`: typed tool registration with JSON
+  schema, `from_json`, `to_json`, and `ToolContext` access.
+- `examples/servers/workspace_server.cpp`: realistic read-only workspace server
+  with tools, prompts, resources, templates, completion, sampling, logging, and
+  task-capable operations.
+- `examples/servers/git_server.cpp`: bounded read-only Git status, log, and diff
+  tools.
+- `examples/servers/sqlite_server.cpp`: bounded read-only SQLite schema, table,
+  and query tools backed by the `sqlite3` command when it is available.
+- `examples/servers/cmake_ctest_server.cpp`: CMake preset and CTest inspection
+  tools, with test execution gated by an explicit `allow_run` argument.
+- `examples/servers/json_file_server.cpp`: bounded JSON summary and JSON
+  pointer lookup tools.
+- `examples/servers/csv_server.cpp`: bounded CSV summary and sample tools.
+- `examples/servers/compile_commands_server.cpp`: bounded
+  `compile_commands.json` summary and source-command lookup tools.
+- `examples/servers/jsonl_server.cpp`: bounded JSON Lines summary and sample
+  tools.
+- `examples/servers/log_triage_server.cpp`: incident/log triage server with
+  typed tools, prompts, resources, completion, and task-capable log analysis.
+- `examples/clients/streamable_http_client.cpp`: standalone `ClientPeer` +
+  `Service` streamable HTTP client.
+- `examples/clients/elicitation_client.cpp`: client-side `elicitation/create`
+  handler.
+- `examples/transports/graceful_shutdown.cpp`: cooperative cancellation and
+  idempotent `ServerPeer` + `Service` shutdown.
+- `examples/clients/timeout_cancellation_client.cpp`: request timeouts,
+  cancellation tokens, cancellation notifications, and idempotent
+  `RequestHandle::cancel()`.
 
 ## Executables
+
+### Copyable Examples
 
 - `cxxmcp_minimal_stdio_server`: the smallest useful stdio server. It shows
   initialize, one JSON tool, one prompt, one resource, and a raw health request.
@@ -91,90 +87,52 @@ run outside the SDK repository.
 - `cxxmcp_timeout_cancellation_client`: a focused `ClientPeer` example showing
   request timeouts, external cancellation tokens, cancellation notifications,
   and idempotent `RequestHandle::cancel()`.
-- `cxxmcp_client_inbound_cancellation_matrix`: demonstrates
-  cancellation-aware client-side request handlers and propagation from
-  `notifications/cancelled` into the inbound handler `CancellationToken`.
 - `cxxmcp_workspace_server`: a stdio MCP server for code/workspace inspection.
   It provides bounded file reads, regex search, workspace summaries, a review
   prompt, completion suggestions, sample generation, a summary resource, a file
   URI template, and task-capable read-only tools.
-- `cxxmcp_conformance_everything_server`: a streamable HTTP server for
-  `modelcontextprotocol/conformance` server-mode testing. It listens on
-  `http://127.0.0.1:3000/mcp` by default, or pass a port as argv[1] / set
-  `PORT` / set `CXXMCP_EVERYTHING_PORT`.
-- `cxxmcp_conformance_everything_client`: a command-style client harness for
-  `modelcontextprotocol/conformance` client-mode testing. The conformance
-  runner sets `MCP_CONFORMANCE_SCENARIO` and appends the scenario server URL.
-  The harness covers initialize, tools_call, elicitation defaults, request
-  metadata, OAuth/auth, MRTR request state, standard HTTP headers, and JSON
-  Schema network `$ref` handling through the SDK client.
+- `cxxmcp_git_server`: a stdio MCP server for bounded read-only Git inspection.
+  It exposes status, log, and diff tools with structured output.
+- `cxxmcp_sqlite_server`: a stdio MCP server for bounded read-only SQLite
+  inspection. It uses the `sqlite3` command at runtime and reports a normal tool
+  error when that command is unavailable.
+- `cxxmcp_cmake_ctest_server`: a stdio MCP server for CMake/CTest inspection.
+  It reads `CMakePresets.json`, lists tests from a build directory, and runs
+  selected CTest tests only when `allow_run=true`.
+- `cxxmcp_json_file_server`: a stdio MCP server for bounded JSON file
+  inspection. It summarizes root structure and reads values by JSON pointer.
+- `cxxmcp_csv_server`: a stdio MCP server for bounded CSV inspection. It
+  summarizes columns and returns small row samples.
+- `cxxmcp_compile_commands_server`: a stdio MCP server for bounded
+  `compile_commands.json` inspection. It summarizes translation units and finds
+  compile commands by source path text.
+- `cxxmcp_jsonl_server`: a stdio MCP server for bounded JSON Lines inspection.
+  It summarizes line validity, object keys, and small row samples.
 - `cxxmcp_log_triage_server`: a stdio MCP server for incident/log triage. It
   summarizes severity counts, extracts matching lines, exposes a playbook
   resource, renders an incident-report prompt, provides completion suggestions,
   and supports task-capable log tools.
-- `cxxmcp_client_callbacks_matrix`: a client-side matrix for server-to-client
-  features. It handles `roots/list`, `sampling/createMessage`,
-  `elicitation/create`, custom requests, cancellation-aware request handlers,
-  progress, logging, list changed notifications, and resource update
-  notifications.
-- `cxxmcp_transport_stdio_matrix`: validates the role-generic
-  `transport::ClientStdioTransport` and `transport::ServerStdioTransport`
-  message contract over caller-owned streams.
-- `cxxmcp_process_stdio_client_probe`: launches `cxxmcp_minimal_stdio_server`
-  as a child process through `transport::ProcessStdioClientTransport` and uses
-  `mcp::serve` plus `ClientPeer` against the process, and also validates the
-  `ClientPeer::connect_stdio` convenience constructor.
-- `cxxmcp_async_request_matrix`: validates `RequestOptions`, request metadata,
-  `RequestHandle`, async typed helpers, list-all helpers, outbound elicitation,
-  timeout/cancellation behavior, and typed completion helpers.
-- `cxxmcp_policy_subscription_matrix`: validates resource subscribe/unsubscribe,
-  targeted resource-update notifications, server auth providers, and rate
-  limiters.
-- `cxxmcp_extension_plugin_adapter_matrix`: demonstrates the plugin SDK and
-  adapter extension contracts by registering a plugin-backed tool into a normal
-  `ToolRegistry`. This target is built only when the consumed SDK package still
-  exports `cxxmcp::plugin_sdk` and `cxxmcp::adapters`.
-- `cxxmcp_server_to_client_context_matrix`: invokes client roots, sampling,
-  elicitation, task listing, and elicitation-complete notification from inside
-  a server tool through `ToolContext::client()`.
-- `cxxmcp_handler_interface_matrix`: validates aggregate/interface-style
-  `ClientHandler` and `ServerHandler` installation paths.
-- `cxxmcp_native_server_transport_matrix`: drives `ServerPeer::serve_transport`
-  with a custom role-generic `transport::ServerTransport`.
-- `cxxmcp_rich_content_cancellation_matrix`: demonstrates image/audio/resource
-  content blocks, annotations, `_meta`, output schema, and cooperative
-  cancellation observed through `ToolContext::cancelled()`.
-- `cxxmcp_direct_http_legacy_sse_matrix`: runs the direct HTTP transport path
-  without the gateway wrapper and verifies both streamable HTTP and legacy SSE
-  client connection helpers.
-- `cxxmcp_http_auth_lite_matrix`: runs a direct streamable HTTP server through
-  `ServerPeer` + `Service` with an `AuthProvider`, a configured
-  `WWW-Authenticate` challenge, and a `ClientPeer` streamable HTTP endpoint
-  using the bearer-token helper; it verifies unauthorized `401` failures and
-  authenticated `ToolContext::auth_identity` propagation.
-- `cxxmcp_pagination_cursor_matrix`: drives cursor-based list pagination for
-  tools, prompts, resources, resource templates, and tasks through the
-  `ClientPeer::list_all_*` helpers.
-- `cxxmcp_client_subscription_helper_matrix`: uses `ClientPeer::subscribe()` and
-  `unsubscribe()` plus targeted resource update notifications in a loopback
-  client/server pair.
-- `cxxmcp_task_cancel_matrix`: starts a task-backed tool, cancels it through the
-  SDK task API, and observes the cancelled task state.
-- `cxxmcp_transport_adapter_matrix`: covers client and server adapters in both
-  directions: legacy `client::Transport` / `server::Transport` to the
-  role-generic contract, and contract transports back to concrete client/server
-  APIs, including handler and failure paths.
-- `cxxmcp_http_gateway_runtime_matrix`: starts the runtime gateway, binds the
-  minimal stdio server as an upstream, exposes it over streamable HTTP, and
-  calls it with the SDK client.
-- `cxxmcp_runtime_services_matrix`: exercises the application/runtime service
-  layer: in-memory stores, JSON-backed stores, bundle import/export, client
-  config generation, readiness/status checks, onboarding, config import,
-  server discovery, and exposure profile management.
-- `cxxmcp_sdk_smoke`: an in-process ClientPeer/Server loopback executable that
-  validates tools, prompts, resources, resource templates, completion, sampling,
-  logging, raw requests, notifications, and task-backed tool calls without an
-  external MCP client.
+
+### Validation And Conformance
+
+- `cxxmcp_sdk_smoke`: in-process `ClientPeer`/`ServerPeer` loopback coverage
+  for tools, prompts, resources, templates, completion, sampling, logging, raw
+  requests, notifications, and task-backed tool calls.
+- `cxxmcp_process_stdio_client_probe`: launches the minimal server as a child
+  process and validates process stdio client consumption.
+- `cxxmcp_conformance_everything_server`: streamable HTTP server for
+  `modelcontextprotocol/conformance` server-mode testing.
+- `cxxmcp_conformance_everything_client`: command-style client harness for
+  `modelcontextprotocol/conformance` client-mode testing.
+- Matrix targets cover callbacks, cancellation, async requests, policy hooks,
+  subscriptions, pagination, task cancellation, direct HTTP/SSE, HTTP auth-lite,
+  transport adapters, native server transports, handler interfaces, rich
+  content, gateway runtime, and runtime services.
+
+The validation targets intentionally do not call every overload or every DTO
+serializer one by one. They cover each public feature family with
+representative downstream code that must compile and run outside the SDK
+repository.
 
 ## Build
 
@@ -222,7 +180,7 @@ the server installs `AuthProvider`, `HttpTransportOptions::auth_challenge`, and
 ## MCP Conformance
 
 The conformance harness is maintained separately at
-`modelcontextprotocol/conformance`. Start the C++ everything server first:
+`modelcontextprotocol/conformance`. The short server-mode flow is:
 
 ```powershell
 cmake --build build --target cxxmcp_conformance_everything_server --config Release
@@ -235,57 +193,12 @@ Then run the active server suite from a conformance checkout:
 npm start -- server --url http://127.0.0.1:3000/mcp --suite active --verbose
 ```
 
-Current validation against the active suite is 40 passing checks and 0 failures.
-No expected-failure baseline is currently required.
-
-To validate the latest dated MCP spec without draft-only 2026 scenarios:
-
-```powershell
-npm start -- server --url http://127.0.0.1:3000/mcp --suite all --spec-version 2025-11-25
-```
-
-Current server validation for `2025-11-25` is 47 passing checks and 0 failures.
-Current server validation for the latest all-suite run is 108 passing checks
-and 1 failure. The remaining failure is the SEP-2243
-`ServerRejectsMissingMethodHeader` check: strict `Mcp-Method` rejection would
-break the TypeScript SDK v1.29.0 conformance client, which does not yet send
-that required header. The C++ client transport sends `Mcp-Method`; strict
-server enforcement is tracked separately from the default compatibility mode.
-Upstream tracking:
-[typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176)
-and
-[conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323).
-
-For client-mode conformance, build the client harness and run suites from the
-conformance checkout:
-
-```powershell
-cmake --build build --target cxxmcp_conformance_everything_client --config Release
-cd C:\Users\cmx\repo\conformance
-npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite core
-npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite draft
-npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite all
-```
-
-Current client validation without a client baseline:
-
-- OpenSSL/vcpkg all suite: 428 passing checks and 8 failing checks.
-- `2025-11-25` suite: 224 passing checks and 1 failing check.
-- Tier auth suite: 217 passing checks and 0 failures.
-
-The client auth harness passes the current tier, back-compat, draft, and
-extension auth scenarios when built with `CXXMCP_AUTH_CRYPTO=OpenSSL`,
-including private_key_jwt client credentials and enterprise-managed
-authorization. The remaining client all-suite failures are SSE retry /
-`Last-Event-ID` behavior and SEP-2243 custom header validation cases.
-
-In local `--suite all` comparisons against the same runner, the C++ server is
-materially ahead of the saved RMCP reference run: 108/1 for the C++ server all
-suite versus 48/47 for RMCP. The C++ client all suite produces a complete
-428/8 summary; the RMCP client all run did not produce an all-suite summary
-because the runner crashed after RMCP returned an empty/non-JSON response. See
-`CONFORMANCE_STATUS.md` for exact commands, known exceptions, and raw stderr
-notes.
+Current active-suite validation is 40 passing checks and 0 failures. The latest
+saved all-suite server run is 108 passing checks and 1 compatibility-mode
+failure, and the client all-suite run is 428 passing checks and 8 failing
+checks. See [`docs/validation.md`](docs/validation.md) and
+[`CONFORMANCE_STATUS.md`](CONFORMANCE_STATUS.md) for exact commands, known
+exceptions, and raw stderr notes.
 
 ## Codex Config
 
@@ -299,51 +212,82 @@ args = ['C:\Users\cmx\repo\MCPServer.cpp']
 
 [mcp_servers.cxxmcp-log-triage]
 command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_log_triage_server.exe'
+
+[mcp_servers.cxxmcp-git]
+command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_git_server.exe'
+
+[mcp_servers.cxxmcp-sqlite]
+command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_sqlite_server.exe'
+
+[mcp_servers.cxxmcp-cmake-ctest]
+command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_cmake_ctest_server.exe'
+
+[mcp_servers.cxxmcp-json-file]
+command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_json_file_server.exe'
+
+[mcp_servers.cxxmcp-csv]
+command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_csv_server.exe'
+
+[mcp_servers.cxxmcp-compile-commands]
+command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_compile_commands_server.exe'
+
+[mcp_servers.cxxmcp-jsonl]
+command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_jsonl_server.exe'
 ```
 
 ## Learning Path
 
-1. Start with `src/minimal_stdio_server.cpp` to see the compact stdio server
-   shape and newline-delimited transport.
-2. Read `src/typed_tool_server.cpp` for the typed tool path: JSON schema,
-   `from_json`, `to_json`, and `ToolContext`.
-3. Read `src/streamable_http_client.cpp` and
-   `src/process_stdio_client_probe.cpp` for `ClientPeer` plus `Service` over
-   network and child-process transports.
-4. Move to `src/workspace_server.cpp` and `src/log_triage_server.cpp` for typed
-   arguments/results, schemas, resources, prompts, completion, sampling,
-   logging, raw requests, and task support in realistic servers.
-5. Read `src/client_callbacks_matrix.cpp`,
-   `src/client_inbound_cancellation_matrix.cpp`, and
-   `src/elicitation_client.cpp` for client-side request and notification
-   handlers that do not appear as ordinary tools, including cancellation-aware
-   inbound callbacks.
-6. Read `src/graceful_shutdown.cpp`, `src/transport_stdio_matrix.cpp`, and
-   `src/native_server_transport_matrix.cpp` for service shutdown,
+1. Start with `examples/basic/minimal_stdio_server.cpp` to see the compact
+   stdio server shape and newline-delimited transport.
+2. Read `examples/basic/typed_tool_server.cpp` for the typed tool path: JSON
+   schema, `from_json`, `to_json`, and `ToolContext`.
+3. Read `examples/clients/streamable_http_client.cpp` and
+   `examples/transports/process_stdio_client_probe.cpp` for `ClientPeer` plus
+   `Service` over network and child-process transports.
+4. Move to `examples/servers/workspace_server.cpp`,
+   `examples/servers/git_server.cpp`, `examples/servers/sqlite_server.cpp`,
+   `examples/servers/cmake_ctest_server.cpp`, and
+   `examples/servers/log_triage_server.cpp` for typed arguments/results,
+   schemas, resources, prompts, completion, sampling, logging, raw requests,
+   task support, and bounded native tool inspection in realistic servers. Read
+   `examples/servers/json_file_server.cpp`, `examples/servers/csv_server.cpp`,
+   `examples/servers/compile_commands_server.cpp`, and
+   `examples/servers/jsonl_server.cpp` for compact pure-C++ file-inspection
+   servers.
+5. Read `validation/matrices/client_callbacks_matrix.cpp`,
+   `validation/matrices/client_inbound_cancellation_matrix.cpp`, and
+   `examples/clients/elicitation_client.cpp` for client-side request and
+   notification handlers that do not appear as ordinary tools, including
+   cancellation-aware inbound callbacks.
+6. Read `examples/transports/graceful_shutdown.cpp`,
+   `validation/matrices/transport_stdio_matrix.cpp`, and
+   `examples/advanced/native_server_transport_matrix.cpp` for service shutdown,
    role-generic transports, and custom server transports.
-7. Read `src/timeout_cancellation_client.cpp` first for focused timeout and
-   cancellation behavior, then `src/async_request_matrix.cpp` for request
-   metadata, async helpers, list-all helpers, and typed completion helpers.
-8. Read `src/policy_subscription_matrix.cpp` and
-   `src/extension_plugin_adapter_matrix.cpp` for server policy hooks,
-   subscriptions, plugin SDK, and adapters.
-9. Read `src/server_to_client_context_matrix.cpp`,
-   `src/handler_interface_matrix.cpp`,
-   `src/native_server_transport_matrix.cpp`, and
-   `src/rich_content_cancellation_matrix.cpp` for advanced peer callbacks,
-   handler contracts, custom transports, rich content, and cancellation.
-10. Read `src/direct_http_legacy_sse_matrix.cpp`,
-   `src/http_auth_lite_matrix.cpp`,
-   `src/pagination_cursor_matrix.cpp`,
-   `src/client_subscription_helper_matrix.cpp`, and
-   `src/task_cancel_matrix.cpp` for direct HTTP/SSE, HTTP auth-lite,
-   pagination, subscriptions, and task cancellation.
-11. Read `src/transport_adapter_matrix.cpp` for concrete-to-contract transport
-   bridges on both client and server roles.
-12. Read `src/http_gateway_runtime_matrix.cpp` and
-    `src/runtime_services_matrix.cpp` for streamable HTTP, gateway runtime,
-    persisted app stores, client config, readiness/status, onboarding, and
-    exposure management.
+7. Read `examples/clients/timeout_cancellation_client.cpp` first for focused
+   timeout and cancellation behavior, then
+   `validation/matrices/async_request_matrix.cpp` for request metadata, async
+   helpers, list-all helpers, and typed completion helpers.
+8. Read `validation/matrices/policy_subscription_matrix.cpp` and
+   `validation/matrices/extension_plugin_adapter_matrix.cpp` for server policy
+   hooks, subscriptions, plugin SDK, and adapters.
+9. Read `examples/advanced/server_to_client_context_matrix.cpp`,
+   `validation/matrices/handler_interface_matrix.cpp`,
+   `examples/advanced/native_server_transport_matrix.cpp`, and
+   `examples/advanced/rich_content_cancellation_matrix.cpp` for advanced peer
+   callbacks, handler contracts, custom transports, rich content, and
+   cancellation.
+10. Read `examples/http/direct_http_legacy_sse_matrix.cpp`,
+    `examples/http/http_auth_lite_matrix.cpp`,
+    `validation/matrices/pagination_cursor_matrix.cpp`,
+    `validation/matrices/client_subscription_helper_matrix.cpp`, and
+    `validation/matrices/task_cancel_matrix.cpp` for direct HTTP/SSE, HTTP
+    auth-lite, pagination, subscriptions, and task cancellation.
+11. Read `validation/matrices/transport_adapter_matrix.cpp` for
+    concrete-to-contract transport bridges on both client and server roles.
+12. Read `validation/matrices/http_gateway_runtime_matrix.cpp` and
+    `validation/matrices/runtime_services_matrix.cpp` for streamable HTTP,
+    gateway runtime, persisted app stores, client config, readiness/status,
+    onboarding, and exposure management.
 
 ## Manual JSON-RPC Probes
 
@@ -398,6 +342,48 @@ Call a tool as a task:
 {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"workspace.scan","arguments":{"max_files":100},"task":{"ttl":60}}}
 ```
 
+Call a read-only Git tool:
+
+```json
+{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"git.status","arguments":{"repo":"C:/Users/cmx/repo/MCPServer.cpp","max_bytes":65536}}}
+```
+
+Call a read-only SQLite query:
+
+```json
+{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"sqlite.query","arguments":{"database":"C:/path/to/app.db","sql":"SELECT name FROM sqlite_master WHERE type = 'table'","max_rows":50}}}
+```
+
+List CTest tests:
+
+```json
+{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"ctest.list","arguments":{"build_dir":"C:/Users/cmx/repo/cxxmcp-examples/build-reorg-check"}}}
+```
+
+Read a JSON pointer:
+
+```json
+{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"json.pointer","arguments":{"path":"C:/Users/cmx/repo/cxxmcp-examples/docs/validation.md","pointer":""}}}
+```
+
+Sample a CSV file:
+
+```json
+{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"csv.sample","arguments":{"path":"C:/path/to/data.csv","rows":10}}}
+```
+
+Find compile commands for a source file:
+
+```json
+{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"compile_commands.find","arguments":{"path":"C:/Users/cmx/repo/cxxmcp-examples/build-reorg-check/compile_commands.json","file_contains":"workspace_server.cpp"}}}
+```
+
+Summarize JSON Lines:
+
+```json
+{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"jsonl.summary","arguments":{"path":"C:/path/to/events.jsonl","max_lines":1000}}}
+```
+
 ## Run with an MCP client
 
 Workspace server:
@@ -425,4 +411,86 @@ Log triage server:
 }
 ```
 
+Git server:
 
+```json
+{
+  "mcpServers": {
+    "cxxmcp-git": {
+      "command": "C:/Users/cmx/repo/cxxmcp-examples/build/Release/cxxmcp_git_server.exe"
+    }
+  }
+}
+```
+
+SQLite server:
+
+```json
+{
+  "mcpServers": {
+    "cxxmcp-sqlite": {
+      "command": "C:/Users/cmx/repo/cxxmcp-examples/build/Release/cxxmcp_sqlite_server.exe"
+    }
+  }
+}
+```
+
+CMake/CTest server:
+
+```json
+{
+  "mcpServers": {
+    "cxxmcp-cmake-ctest": {
+      "command": "C:/Users/cmx/repo/cxxmcp-examples/build/Release/cxxmcp_cmake_ctest_server.exe"
+    }
+  }
+}
+```
+
+JSON file server:
+
+```json
+{
+  "mcpServers": {
+    "cxxmcp-json-file": {
+      "command": "C:/Users/cmx/repo/cxxmcp-examples/build/Release/cxxmcp_json_file_server.exe"
+    }
+  }
+}
+```
+
+CSV server:
+
+```json
+{
+  "mcpServers": {
+    "cxxmcp-csv": {
+      "command": "C:/Users/cmx/repo/cxxmcp-examples/build/Release/cxxmcp_csv_server.exe"
+    }
+  }
+}
+```
+
+Compile commands server:
+
+```json
+{
+  "mcpServers": {
+    "cxxmcp-compile-commands": {
+      "command": "C:/Users/cmx/repo/cxxmcp-examples/build/Release/cxxmcp_compile_commands_server.exe"
+    }
+  }
+}
+```
+
+JSON Lines server:
+
+```json
+{
+  "mcpServers": {
+    "cxxmcp-jsonl": {
+      "command": "C:/Users/cmx/repo/cxxmcp-examples/build/Release/cxxmcp_jsonl_server.exe"
+    }
+  }
+}
+```

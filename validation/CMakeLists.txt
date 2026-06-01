@@ -1,0 +1,115 @@
+add_executable(cxxmcp_sdk_smoke
+    smoke/sdk_smoke.cpp)
+cxxmcp_example(cxxmcp_sdk_smoke)
+cxxmcp_register_test(cxxmcp_sdk_smoke)
+set_tests_properties(cxxmcp_sdk_smoke PROPERTIES
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
+add_executable(cxxmcp_client_inbound_cancellation_matrix
+    matrices/client_inbound_cancellation_matrix.cpp)
+cxxmcp_example(cxxmcp_client_inbound_cancellation_matrix)
+cxxmcp_register_test(cxxmcp_client_inbound_cancellation_matrix)
+
+add_executable(cxxmcp_client_callbacks_matrix
+    matrices/client_callbacks_matrix.cpp)
+cxxmcp_example(cxxmcp_client_callbacks_matrix)
+cxxmcp_register_test(cxxmcp_client_callbacks_matrix)
+
+add_executable(cxxmcp_transport_stdio_matrix
+    matrices/transport_stdio_matrix.cpp)
+cxxmcp_example(cxxmcp_transport_stdio_matrix)
+cxxmcp_register_test(cxxmcp_transport_stdio_matrix)
+
+add_executable(cxxmcp_async_request_matrix
+    matrices/async_request_matrix.cpp)
+cxxmcp_example(cxxmcp_async_request_matrix)
+cxxmcp_register_test(cxxmcp_async_request_matrix)
+
+add_executable(cxxmcp_policy_subscription_matrix
+    matrices/policy_subscription_matrix.cpp)
+cxxmcp_example(cxxmcp_policy_subscription_matrix)
+cxxmcp_register_test(cxxmcp_policy_subscription_matrix)
+
+if(TARGET cxxmcp::plugin_sdk AND TARGET cxxmcp::adapters)
+    add_executable(cxxmcp_extension_plugin_adapter_matrix
+        matrices/extension_plugin_adapter_matrix.cpp)
+    target_compile_features(cxxmcp_extension_plugin_adapter_matrix
+        PRIVATE cxx_std_20)
+    target_link_libraries(cxxmcp_extension_plugin_adapter_matrix
+        PRIVATE cxxmcp::sdk cxxmcp::plugin_sdk cxxmcp::adapters)
+    cxxmcp_register_test(cxxmcp_extension_plugin_adapter_matrix)
+endif()
+
+add_executable(cxxmcp_handler_interface_matrix
+    matrices/handler_interface_matrix.cpp)
+cxxmcp_example(cxxmcp_handler_interface_matrix)
+cxxmcp_register_test(cxxmcp_handler_interface_matrix)
+
+add_executable(cxxmcp_pagination_cursor_matrix
+    matrices/pagination_cursor_matrix.cpp)
+cxxmcp_example(cxxmcp_pagination_cursor_matrix)
+cxxmcp_register_test(cxxmcp_pagination_cursor_matrix)
+
+add_executable(cxxmcp_client_subscription_helper_matrix
+    matrices/client_subscription_helper_matrix.cpp)
+cxxmcp_example(cxxmcp_client_subscription_helper_matrix)
+cxxmcp_register_test(cxxmcp_client_subscription_helper_matrix)
+
+add_executable(cxxmcp_task_cancel_matrix
+    matrices/task_cancel_matrix.cpp)
+cxxmcp_example(cxxmcp_task_cancel_matrix)
+cxxmcp_register_test(cxxmcp_task_cancel_matrix)
+
+add_executable(cxxmcp_transport_adapter_matrix
+    matrices/transport_adapter_matrix.cpp)
+cxxmcp_example(cxxmcp_transport_adapter_matrix)
+cxxmcp_register_test(cxxmcp_transport_adapter_matrix)
+
+if(TARGET cxxmcp::gateway OR TARGET mcp_gateway)
+    add_executable(cxxmcp_http_gateway_runtime_matrix
+        matrices/http_gateway_runtime_matrix.cpp)
+    target_compile_features(cxxmcp_http_gateway_runtime_matrix PRIVATE cxx_std_20)
+    if(TARGET cxxmcp::gateway)
+        target_link_libraries(cxxmcp_http_gateway_runtime_matrix
+            PRIVATE cxxmcp::gateway cxxmcp::sdk)
+    else()
+        target_link_libraries(cxxmcp_http_gateway_runtime_matrix
+            PRIVATE mcp_gateway cxxmcp::sdk)
+    endif()
+    target_compile_definitions(cxxmcp_http_gateway_runtime_matrix
+        PRIVATE CXXMCP_EXAMPLES_CHILD_EXE="$<TARGET_FILE:cxxmcp_minimal_stdio_server>")
+    add_dependencies(cxxmcp_http_gateway_runtime_matrix cxxmcp_minimal_stdio_server)
+    cxxmcp_register_test(cxxmcp_http_gateway_runtime_matrix)
+
+    add_executable(cxxmcp_runtime_services_matrix
+        matrices/runtime_services_matrix.cpp)
+    target_compile_features(cxxmcp_runtime_services_matrix PRIVATE cxx_std_20)
+    if(TARGET cxxmcp::gateway)
+        target_link_libraries(cxxmcp_runtime_services_matrix
+            PRIVATE cxxmcp::gateway cxxmcp::runtime cxxmcp::sdk)
+    else()
+        target_link_libraries(cxxmcp_runtime_services_matrix
+            PRIVATE mcp_gateway mcp_app cxxmcp::sdk)
+    endif()
+    cxxmcp_register_test(cxxmcp_runtime_services_matrix)
+endif()
+
+add_executable(cxxmcp_conformance_everything_server
+    conformance/conformance_everything_server.cpp)
+cxxmcp_example(cxxmcp_conformance_everything_server)
+
+add_executable(cxxmcp_conformance_everything_client
+    conformance/conformance_everything_client.cpp)
+cxxmcp_example(cxxmcp_conformance_everything_client)
+if(TARGET cxxmcp::auth)
+    target_link_libraries(cxxmcp_conformance_everything_client
+        PRIVATE cxxmcp::auth)
+    target_compile_definitions(cxxmcp_conformance_everything_client
+        PRIVATE CXXMCP_EXAMPLES_ENABLE_AUTH=1)
+endif()
+if(TARGET cxxmcp::auth_openssl)
+    target_link_libraries(cxxmcp_conformance_everything_client
+        PRIVATE cxxmcp::auth_openssl)
+    target_compile_definitions(cxxmcp_conformance_everything_client
+        PRIVATE CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL=1)
+endif()
