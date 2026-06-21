@@ -98,6 +98,21 @@ add_executable(cxxmcp_conformance_everything_server
     conformance/conformance_everything_server.cpp)
 cxxmcp_example(cxxmcp_conformance_everything_server)
 
+add_executable(cxxmcp_conformance_typed_authoring_server
+    conformance/conformance_typed_authoring_server.cpp)
+cxxmcp_example(cxxmcp_conformance_typed_authoring_server)
+
+if(CXXMCP_ENABLE_INSPECTOR_SMOKE)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME cxxmcp_inspector_typed_authoring_smoke
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_inspector_smoke.py"
+            --server-exe "$<TARGET_FILE:cxxmcp_conformance_typed_authoring_server>")
+    set_tests_properties(cxxmcp_inspector_typed_authoring_smoke PROPERTIES
+        LABELS "inspector;upstream;typed-api"
+        TIMEOUT 90)
+endif()
+
 add_executable(cxxmcp_conformance_everything_client
     conformance/conformance_everything_client.cpp)
 cxxmcp_example(cxxmcp_conformance_everything_client)

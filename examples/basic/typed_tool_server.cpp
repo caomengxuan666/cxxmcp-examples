@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <string>
-#include <utility>
 
 #include "cxxmcp/peer.hpp"
 #include "cxxmcp/run.hpp"
@@ -8,52 +7,35 @@
 
 namespace examples {
 
-using Json = mcp::protocol::Json;
+struct AddTool {
+  static constexpr std::string_view name = "math.add";
+  static constexpr std::string_view title = "Add two integers";
+  static constexpr std::string_view description =
+      "Returns the sum and current MCP session id.";
 
-struct AddArgs {
-  std::int64_t left = 0;
-  std::int64_t right = 0;
-};
+  struct Args {
+    std::int64_t left = 0;
+    std::int64_t right = 0;
 
-struct AddResult {
-  std::int64_t sum = 0;
-  std::string session_id;
-};
+    CXXMCP_REFLECT_SELF(Args, left, right)
+  };
 
-void from_json(const Json &json, AddArgs &args) {
-  args.left = json.at("left").get<std::int64_t>();
-  args.right = json.at("right").get<std::int64_t>();
-}
+  struct Result {
+    std::int64_t sum = 0;
+    std::string session_id;
 
-void to_json(Json &json, const AddResult &result) {
-  json = Json{{"sum", result.sum}, {"sessionId", result.session_id}};
-}
+    CXXMCP_REFLECT_SELF(Result, sum, session_id)
+  };
 
-} // namespace examples
-
-namespace mcp::protocol {
-
-template <> struct SchemaTraits<examples::AddArgs> {
-  static Json schema() {
-    return object_schema()
-        .required_property("left", JsonSchema::integer())
-        .required_property("right", JsonSchema::integer())
-        .additional_properties(false)
-        .build();
+  Result operator()(Args args, const mcp::server::ToolContext& context) const {
+    return Result{
+        .sum = args.left + args.right,
+        .session_id = context.session_id,
+    };
   }
 };
 
-template <> struct SchemaTraits<examples::AddResult> {
-  static Json schema() {
-    return object_schema()
-        .required_property("sum", JsonSchema::integer())
-        .required_property("sessionId", JsonSchema::string())
-        .additional_properties(false)
-        .build();
-  }
-};
-
-} // namespace mcp::protocol
+}  // namespace examples
 
 int main() {
   return mcp::ServerPeer::builder()
@@ -61,16 +43,6 @@ int main() {
       .version("0.1.0")
       .instructions("Typed stdio server exposing a schema-backed math tool.")
       .stdio()
-      .tool(
-          mcp::server::tool<examples::AddArgs, examples::AddResult>("math.add")
-              .title("Add two integers")
-              .description("Returns the sum and current MCP session id.")
-              .handler([](examples::AddArgs args,
-                          const mcp::server::ToolContext &context) {
-                return examples::AddResult{
-                    .sum = args.left + args.right,
-                    .session_id = context.session_id,
-                };
-              }))
+      .tool(mcp::server::tool(examples::AddTool{}))
       .run();
 }

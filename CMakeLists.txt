@@ -11,6 +11,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 option(CXXMCP_EXAMPLES_USE_ADJACENT_SDK
     "Use ../MCPServer.cpp as the cxxmcp SDK source tree when present" ON)
+option(CXXMCP_ENABLE_INSPECTOR_SMOKE
+    "Enable the npm-based MCP Inspector smoke test for validation fixtures" OFF)
 set(CXXMCP_EXAMPLES_SDK_SOURCE_DIR
     "${CMAKE_CURRENT_LIST_DIR}/../MCPServer.cpp"
     CACHE PATH "Path to a cxxmcp SDK source tree")

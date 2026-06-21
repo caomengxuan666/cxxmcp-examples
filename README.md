@@ -38,8 +38,8 @@ Start here:
 
 - `examples/basic/minimal_stdio_server.cpp`: smallest useful stdio server with
   initialize, one tool, one prompt, one resource, and a raw health request.
-- `examples/basic/typed_tool_server.cpp`: typed tool registration with JSON
-  schema, `from_json`, `to_json`, and `ToolContext` access.
+- `examples/basic/typed_tool_server.cpp`: compact typed tool object with
+  reflected argument/result structs and `ToolContext` access.
 - `examples/servers/workspace_server.cpp`: realistic read-only workspace server
   with tools, prompts, resources, templates, completion, sampling, logging, and
   task-capable operations.
@@ -74,9 +74,9 @@ Start here:
 
 - `cxxmcp_minimal_stdio_server`: the smallest useful stdio server. It shows
   initialize, one JSON tool, one prompt, one resource, and a raw health request.
-- `cxxmcp_typed_tool_server`: a compact typed stdio server. It shows
-  `from_json`, `to_json`, `SchemaTraits`, typed tool registration, output
-  schema, and `ToolContext` access.
+- `cxxmcp_typed_tool_server`: a compact typed stdio server. It shows a tool
+  object, `CXXMCP_REFLECT_SELF`, generated input/output schemas, and
+  `ToolContext` access.
 - `cxxmcp_streamable_http_client`: a standalone `ClientPeer` + `Service`
   streamable HTTP client. Pass an endpoint URI or use the default
   `http://127.0.0.1:3000/mcp`.
@@ -239,8 +239,8 @@ command = 'C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_jsonl_server.exe'
 
 1. Start with `examples/basic/minimal_stdio_server.cpp` to see the compact
    stdio server shape and newline-delimited transport.
-2. Read `examples/basic/typed_tool_server.cpp` for the typed tool path: JSON
-   schema, `from_json`, `to_json`, and `ToolContext`.
+2. Read `examples/basic/typed_tool_server.cpp` for the typed tool path:
+   reflected DTOs, generated schemas, tool-object authoring, and `ToolContext`.
 3. Read `examples/clients/streamable_http_client.cpp` and
    `examples/transports/process_stdio_client_probe.cpp` for `ClientPeer` plus
    `Service` over network and child-process transports.

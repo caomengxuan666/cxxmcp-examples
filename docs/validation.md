@@ -20,6 +20,7 @@ that must compile and run outside the SDK repository.
 | tools/list, tools/get, tools/call | `minimal_stdio_server`, `workspace_server`, `git_server`, `sqlite_server`, `cmake_ctest_server`, `json_file_server`, `csv_server`, `compile_commands_server`, `jsonl_server`, `log_triage_server`, `sdk_smoke`, `async_request_matrix`, process/gateway probes |
 | typed tool args/results and JSON schemas | `typed_tool_server`, `workspace_server`, `git_server`, `sqlite_server`, `cmake_ctest_server`, `json_file_server`, `csv_server`, `compile_commands_server`, `jsonl_server`, `log_triage_server`, `extension_plugin_adapter_matrix` |
 | official MCP conformance server/client surface | `conformance_everything_server`, `conformance_everything_client` |
+| typed SDK authoring API conformance smoke | `conformance_typed_authoring_server` |
 | task-backed tools and task list/get/result/cancel | `workspace_server`, `log_triage_server`, `sdk_smoke`, `task_cancel_matrix`, `server_to_client_context_matrix` |
 | prompts/list and prompts/get | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
 | resources/list and resources/read | `minimal_stdio_server`, `workspace_server`, `log_triage_server`, `sdk_smoke`, process/gateway probes |
@@ -132,6 +133,42 @@ npm start -- server --url http://127.0.0.1:3000/mcp --suite active --verbose
 
 Current validation against the active suite is 40 passing checks and 0 failures.
 No expected-failure baseline is currently required.
+
+`cxxmcp_conformance_everything_server` is intentionally a protocol fixture: it
+uses explicit JSON tool definitions for the broad official scenarios.
+`cxxmcp_conformance_typed_authoring_server` is the smaller SDK-authoring
+fixture: it registers tools through `mcp::server::tool<Args, Result>()` and
+`ServerPeer::builder().tool<Args, Result>()` so `tools/list` catches typed API
+schema regressions such as scalar arguments being advertised as a non-object
+root schema.
+
+To smoke the typed authoring fixture with the official conformance runner:
+
+```powershell
+cmake --build build --target cxxmcp_conformance_typed_authoring_server --config Release
+.\build\cxxmcp_conformance_typed_authoring_server.exe 3001
+npm start -- server --url http://127.0.0.1:3001/mcp --scenario tools-list
+```
+
+The same fixture can also be checked with the upstream MCP Inspector CLI:
+
+```powershell
+npx -y @modelcontextprotocol/inspector@0.22.0 --cli "http://127.0.0.1:3001/mcp" --transport http --method tools/list
+```
+
+For an opt-in CTest wrapper that starts the fixture, runs Inspector, and asserts
+that `shout_scalar` and `shout_object` advertise object-root schemas, configure
+with:
+
+```powershell
+cmake -S . -B build-inspector -DCXXMCP_ENABLE_INSPECTOR_SMOKE=ON
+cmake --build build-inspector --target cxxmcp_conformance_typed_authoring_server --config Release
+ctest --test-dir build-inspector -C Release -R cxxmcp_inspector_typed_authoring_smoke --output-on-failure
+```
+
+This Inspector smoke is intentionally opt-in for now because it depends on npm
+and current Windows runs can produce a successful `tools/list` response before
+the Inspector process exits with an upstream shutdown assertion.
 
 To validate the latest dated MCP spec without draft-only 2026 scenarios:
 
