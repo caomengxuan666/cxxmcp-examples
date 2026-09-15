@@ -18,12 +18,17 @@
 #include "cxxmcp/service.hpp"
 
 #if defined(CXXMCP_EXAMPLES_ENABLE_AUTH)
+#include "cxxmcp/auth/dpop.hpp"
 #include "cxxmcp/auth/http_metadata_endpoint.hpp"
 #include "cxxmcp/auth/http_token_endpoint.hpp"
 #include "cxxmcp/auth/lifecycle.hpp"
 #include "cxxmcp/auth/registration.hpp"
 #if defined(CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL)
 #include "cxxmcp/auth/openssl/dpop.hpp"
+#include <openssl/bio.h>
+#include <openssl/ec.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
 #endif
 #include "cxxmcp/client/http_transport.hpp"
 #include "httplib/httplib.h"
@@ -128,6 +133,22 @@ void run_tools_call(const std::string& server_url) {
          "tools/call add_numbers failed");
 }
 
+void run_json_schema_2020_12_preservation(const std::string& server_url) {
+  auto client = connect_client(server_url);
+  const auto tools = unwrap(client.peer().list_tools(), "tools/list failed");
+  const mcp::protocol::ToolDefinition* focal = nullptr;
+  for (const auto& tool : tools) {
+    if (tool.name == "json_schema_2020_12_tool") {
+      focal = &tool;
+      break;
+    }
+  }
+  require(focal != nullptr, "json_schema_2020_12_tool was not advertised");
+  unwrap(client.peer().call_tool("json_schema_echo",
+                                 Json{{"schema", focal->input_schema}}),
+         "json_schema_echo call failed");
+}
+
 void run_elicitation_defaults(const std::string& server_url) {
   auto client = connect_client(server_url, true);
   const auto tools = unwrap(client.peer().list_tools(), "tools/list failed");
@@ -182,7 +203,7 @@ Json request_metadata_params(const std::string& version) {
 }
 
 void run_request_metadata(const std::string& server_url) {
-  constexpr std::string_view kDraftVersion = "DRAFT-2026-v1";
+  constexpr std::string_view kDraftVersion = "2026-07-28";
 
   auto meta = request_metadata_params(std::string(kDraftVersion))["_meta"];
 
@@ -579,6 +600,39 @@ Json conformance_context() {
   return Json::parse(context_env);
 }
 
+#if defined(CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL)
+std::string generate_es256_private_key_pem() {
+  EVP_PKEY_CTX* keygen = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr);
+  require(keygen != nullptr, "failed to create EC keygen context");
+  struct KeygenGuard {
+    ~KeygenGuard() { EVP_PKEY_CTX_free(ctx); }
+    EVP_PKEY_CTX* ctx;
+  } guard{keygen};
+  require(EVP_PKEY_keygen_init(keygen) == 1, "failed to initialize EC keygen");
+  require(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(keygen,
+                                                 NID_X9_62_prime256v1) == 1,
+          "failed to select P-256 curve");
+  EVP_PKEY* raw_key = nullptr;
+  require(EVP_PKEY_keygen(keygen, &raw_key) == 1, "failed to generate EC key");
+
+  BIO* bio = BIO_new(BIO_s_mem());
+  require(bio != nullptr, "failed to allocate PEM BIO");
+  struct BioGuard {
+    ~BioGuard() { BIO_free_all(bio_); }
+    BIO* bio_;
+  } bio_guard{bio};
+  require(PEM_write_bio_PrivateKey(bio, raw_key, nullptr, nullptr, 0, nullptr,
+                                   nullptr) == 1,
+          "failed to serialize EC private key");
+  EVP_PKEY_free(raw_key);
+
+  BUF_MEM* buffer = nullptr;
+  BIO_get_mem_ptr(bio, &buffer);
+  require(buffer != nullptr && buffer->length > 0, "empty PEM output");
+  return std::string(buffer->data, buffer->length);
+}
+#endif
+
 class ConformanceAuthSession {
  public:
   ConformanceAuthSession(std::string server_url, std::string scenario,
@@ -587,7 +641,23 @@ class ConformanceAuthSession {
         scenario_(std::move(scenario)),
         context_(std::move(context)),
         metadata_endpoint_(oauth_http_get),
-        token_endpoint_(oauth_http_post) {}
+        token_endpoint_([this](const mcp::auth::OAuthHttpRequest& request) {
+          return post_token_endpoint_request(request);
+        }) {}
+
+  mcp::client::HttpDpopRequestSigner dpop_request_signer() {
+    return [this](const mcp::client::HttpDpopRequestContext& context)
+               -> mcp::core::Result<
+                   std::optional<mcp::client::HttpDpopProof>> {
+      if (!dpop_enabled_ || !context.access_token.has_value()) {
+        return std::optional<mcp::client::HttpDpopProof>{};
+      }
+      mcp::client::HttpDpopProof proof;
+      proof.proof = sign_dpop_proof(context.method, context.url,
+                                    *context.access_token, context.nonce);
+      return std::optional<mcp::client::HttpDpopProof>{std::move(proof)};
+    };
+  }
 
   std::optional<std::string> refresh(
       const mcp::client::HttpAuthChallenge& challenge) {
@@ -615,6 +685,13 @@ class ConformanceAuthSession {
       if (!token.has_value()) {
         fail("client credentials JWT authorization failed: " +
              token.error().message);
+      }
+      return token->access_token;
+    }
+    if (scenario_ == "auth/wif-jwt-bearer") {
+      auto token = authenticate_wif_jwt_bearer();
+      if (!token.has_value()) {
+        fail("wif jwt-bearer authorization failed: " + token.error().message);
       }
       return token->access_token;
     }
@@ -668,6 +745,7 @@ class ConformanceAuthSession {
       manager_ = mcp::auth::AuthorizationManager{};
       configured_ = false;
       preconfigured_client_ = false;
+      dpop_enabled_ = false;
     }
 
     mcp::auth::MetadataDiscoveryExecutor discovery(metadata_endpoint_);
@@ -693,6 +771,7 @@ class ConformanceAuthSession {
     protected_resource_ = std::move(discovered.protected_resource);
     authorization_server_ = std::move(*discovered.authorization_server);
     validate_authorization_server_issuer();
+    enable_dpop_if_advertised();
     manager_.set_resource(protected_resource_.resource.empty()
                               ? server_url_
                               : protected_resource_.resource);
@@ -916,6 +995,34 @@ class ConformanceAuthSession {
 #endif
   }
 
+  mcp::core::Result<mcp::auth::TokenSet> authenticate_wif_jwt_bearer() {
+    const auto assertion = context_.value("valid_jwt", "");
+    if (assertion.empty()) {
+      return mcp::core::unexpected(mcp::auth::make_oauth_error(
+          mcp::auth::OAuthErrorCode::kInvalidRequest,
+          "wif context is missing valid_jwt"));
+    }
+
+    mcp::auth::OAuthClientConfig client;
+    client.client_id = context_.value("client_id", "");
+
+    const auto resource = protected_resource_.resource.empty()
+                              ? server_url_
+                              : protected_resource_.resource;
+    mcp::auth::MetadataMap parameters;
+    parameters["grant_type"] =
+        "urn:ietf:params:oauth:grant-type:jwt-bearer";
+    parameters["assertion"] = assertion;
+    parameters["resource"] = resource;
+    if (!protected_resource_.scopes_supported.empty()) {
+      parameters["scope"] =
+          mcp::auth::detail::join_scopes(protected_resource_.scopes_supported);
+    }
+    return token_endpoint_.exchange_token_grant(
+        authorization_server_, client, parameters,
+        mcp::auth::OAuthErrorCode::kTokenExchangeFailed);
+  }
+
   mcp::core::Result<mcp::auth::TokenSet> authenticate_enterprise_managed() {
     const auto idp_token_endpoint = context_.value("idp_token_endpoint", "");
     const auto idp_id_token = context_.value("idp_id_token", "");
@@ -976,16 +1083,104 @@ class ConformanceAuthSession {
   HttpClientRegistrationEndpoint registration_endpoint_;
   mcp::auth::AuthorizationManager manager_;
   mcp::auth::ProtectedResourceMetadata protected_resource_;
+  void enable_dpop_if_advertised() {
+#if defined(CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL)
+    const auto& supported =
+        authorization_server_.dpop_signing_alg_values_supported;
+    if (std::find(supported.begin(), supported.end(), "ES256") ==
+        supported.end()) {
+      return;
+    }
+    if (dpop_key_.private_key_pem.empty()) {
+      dpop_key_.algorithm = "ES256";
+      dpop_key_.private_key_pem =
+          mcp::auth::SecureString(generate_es256_private_key_pem());
+    }
+    dpop_enabled_ = true;
+#endif
+  }
+
+  std::string sign_dpop_proof(
+      std::string method, std::string url,
+      const std::optional<std::string>& access_token,
+      const std::optional<std::string>& nonce) {
+#if defined(CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL)
+    mcp::auth::DpopProofRequest request;
+    request.target.method = std::move(method);
+    request.target.url = std::move(url);
+    request.key = dpop_key_;
+    request.access_token = access_token;
+    request.nonce = nonce;
+    return unwrap(dpop_signer_.sign(request), "DPoP proof signing failed");
+#else
+    (void)method;
+    (void)url;
+    (void)access_token;
+    (void)nonce;
+    fail("DPoP proof requested without OpenSSL support");
+#endif
+  }
+
+  mcp::core::Result<mcp::auth::OAuthHttpResponse> post_token_endpoint_request(
+      mcp::auth::OAuthHttpRequest request) {
+#if defined(CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL)
+    if (!dpop_enabled_ ||
+        request.url != authorization_server_.token_endpoint) {
+      return oauth_http_post(request);
+    }
+    const auto send = [&](const std::optional<std::string>& nonce) {
+      auto attempt = request;
+      attempt.headers["DPoP"] = sign_dpop_proof(
+          "POST", attempt.url, std::nullopt, nonce);
+      return oauth_http_post(attempt);
+    };
+    auto response = send(std::nullopt);
+    if (response.has_value() && response->status_code == 400 &&
+        response->body.find("use_dpop_nonce") != std::string::npos) {
+      for (const auto& [name, value] : response->headers) {
+        if (name.size() == 10 &&
+            std::equal(name.begin(), name.end(), "dpop-nonce",
+                       [](char a, char b) {
+                         return std::tolower(static_cast<unsigned char>(a)) ==
+                                std::tolower(static_cast<unsigned char>(b));
+                       })) {
+          response = send(value);
+          break;
+        }
+      }
+    }
+    return response;
+#else
+    return oauth_http_post(request);
+#endif
+  }
+
   mcp::auth::AuthorizationServerMetadata authorization_server_;
   std::string redirect_uri_ = "http://127.0.0.1/cxxmcp/oauth/callback";
   bool configured_ = false;
   bool preconfigured_client_ = false;
+  bool dpop_enabled_ = false;
+#if defined(CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL)
+  mcp::auth::DpopKey dpop_key_;
+  mcp::auth::openssl::OpenSslDpopSigner dpop_signer_;
+#endif
   int state_counter_ = 0;
 };
+
+bool is_stateless_wire_version(std::string_view version) {
+  return version == "2026-07-28" || version == "DRAFT-2026-v1";
+}
 
 void run_auth_scenario(const std::string& server_url,
                        const std::string& scenario) {
   ConformanceAuthSession auth(server_url, scenario, conformance_context());
+
+  const char* version_env = std::getenv("MCP_CONFORMANCE_PROTOCOL_VERSION");
+  const std::string wire_version =
+      (version_env != nullptr && *version_env != '\0')
+          ? std::string(version_env)
+          : std::string(mcp::protocol::McpProtocolVersion);
+  const bool stateless = is_stateless_wire_version(wire_version);
 
   auto builder = mcp::ClientPeer::builder();
   builder.streamable_http(std::string(server_url))
@@ -995,14 +1190,29 @@ void run_auth_scenario(const std::string& server_url,
       .auth_refresh_handler(
           [&auth](const mcp::client::HttpAuthChallenge& challenge) {
             return auth.refresh(challenge);
-          });
+          })
+      .dpop_request_signer(auth.dpop_request_signer())
+      .stateless_http(stateless);
 
   auto peer = unwrap(builder.build(), "client build failed");
-  unwrap(peer.initialize("cxxmcp-conformance-client", "0.1.0"),
-         "initialize failed");
-  unwrap(peer.notify_initialized(), "initialized notification failed");
-  unwrap(peer.list_tools(), "tools/list failed");
-  unwrap(peer.call_tool("test-tool", Json::object()),
+  if (!stateless) {
+    unwrap(peer.initialize("cxxmcp-conformance-client", "0.1.0"),
+           "initialize failed");
+    unwrap(peer.notify_initialized(), "initialized notification failed");
+    unwrap(peer.list_tools(), "tools/list failed");
+    unwrap(peer.call_tool("test-tool", Json::object()),
+           "authenticated tools/call failed");
+    return;
+  }
+
+  // SEP-2575 draft wire: no initialize handshake; every POST carries the
+  // negotiated version in both the header and stateless `_meta`.
+  mcp::RequestOptions options;
+  options.protocol_version = wire_version;
+  unwrap(peer.list_tools_async(options).await_response(),
+         "tools/list failed");
+  unwrap(peer.call_tool_async("test-tool", Json::object(), options)
+             .await_response(),
          "authenticated tools/call failed");
 }
 
@@ -1035,6 +1245,8 @@ int main(int argc, char** argv) {
       run_elicitation_defaults(server_url);
     } else if (scenario == "request-metadata") {
       run_request_metadata(server_url);
+    } else if (scenario == "json-schema-2020-12-preservation") {
+      run_json_schema_2020_12_preservation(server_url);
     } else if (scenario == "http-standard-headers") {
       run_http_standard_headers(server_url);
     } else if (scenario == "sep-2322-client-request-state") {
