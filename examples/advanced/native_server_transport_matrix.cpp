@@ -61,12 +61,19 @@ public:
 };
 
 const mcp::protocol::JsonRpcResponse &
-response_at(const ScriptedServerTransport &transport, std::size_t index) {
-  require(index < transport.sent.size(), "missing transport response");
-  const auto *response =
-      std::get_if<mcp::protocol::JsonRpcResponse>(&transport.sent.at(index));
-  require(response != nullptr, "sent message is not a response");
-  return *response;
+response_for_id(const ScriptedServerTransport &transport, std::int64_t id) {
+  for (const auto &message : transport.sent) {
+    const auto *response =
+        std::get_if<mcp::protocol::JsonRpcResponse>(&message);
+    if (response == nullptr || !response->id.has_value()) {
+      continue;
+    }
+    if (const auto *value = std::get_if<std::int64_t>(&*response->id);
+        value != nullptr && *value == id) {
+      return *response;
+    }
+  }
+  throw std::runtime_error("missing transport response for request id");
 }
 
 } // namespace
@@ -111,14 +118,14 @@ int main() {
             "serve_transport failed");
     require(transport.diagnostics().at("sent") == 3,
             "transport diagnostics mismatch");
-    require(response_at(transport, 0).result->contains("serverInfo"),
+    require(response_for_id(transport, 1).result->contains("serverInfo"),
             "initialize response mismatch");
-    require(response_at(transport, 1).result->at("tools").size() == 1,
+    require(response_for_id(transport, 2).result->at("tools").size() == 1,
             "tools/list response mismatch");
-    require(
-        response_at(transport, 2).result->at("structuredContent").at("value") ==
-            7,
-        "tools/call response mismatch");
+    require(response_for_id(transport, 3)
+                    .result->at("structuredContent")
+                    .at("value") == 7,
+            "tools/call response mismatch");
 
     std::cout << "native server transport matrix passed\n";
     return 0;
