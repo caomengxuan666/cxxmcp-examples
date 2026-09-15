@@ -1,6 +1,6 @@
 # MCP Conformance Status
 
-Date: 2026-05-29 (updated — SSE retry fixed)
+Date: 2026-09-15
 
 This document records the current server/client conformance status for the C++
 SDK examples. It intentionally separates real SDK coverage from raw protocol
@@ -8,21 +8,19 @@ probes so failures are not hidden by baselines or harness shortcuts.
 
 ## Local Build
 
-Current adjacent SDK source: `../MCPServer.cpp`.
+Current adjacent SDK source: `../cxxmcp` (master, including the draft
+conformance work merged in `a0e3134`).
 
 Commands run:
 
 ```powershell
-cmake --build build --config Debug
+cmake --build build
 ```
 
 Result:
 
-- Build passed.
-- Adjacent SDK verification in `../MCPServer.cpp` also passed for
-  `mcp_client` and `mcp_server` with both `CXXMCP_ENABLE_AUTH=OFF` and
-  `CXXMCP_ENABLE_AUTH=ON`.
-- CTest was not re-run after the adjacent SDK update.
+- Build passed with `CXXMCP_ENABLE_AUTH=ON`, `CXXMCP_ENABLE_HTTP=ON`, and
+  `CXXMCP_AUTH_CRYPTO=OpenSSL` (vcpkg toolchain).
 
 ## Server Conformance
 
@@ -37,27 +35,27 @@ Server harness:
 Command:
 
 ```powershell
-npm start -- server --url http://127.0.0.1:3000/mcp --suite active
+node dist/index.js server --url http://127.0.0.1:3100/mcp --suite active
 ```
 
 Current result:
 
-- 40 passed.
+- 72 passed.
 - 0 failed.
 
-No expected-failure baseline is currently required.
+No expected-failure baseline is required.
 
 ### Server 2025-11-25 Suite
 
 Command:
 
 ```powershell
-npm start -- server --url http://127.0.0.1:3000/mcp --suite all --spec-version 2025-11-25
+node dist/index.js server --url http://127.0.0.1:3101/mcp --suite all --spec-version 2025-11-25
 ```
 
 Current summary:
 
-- 47 passed.
+- 80 passed.
 - 0 failed.
 
 ### Server All Suite
@@ -65,33 +63,26 @@ Current summary:
 Command:
 
 ```powershell
-npm start -- server --url http://127.0.0.1:3000/mcp --suite all
+node dist/index.js server --url http://127.0.0.1:3100/mcp --suite all
 ```
 
 Current summary:
 
-- 109 passed.
-- 1 failed.
+- 272 passed.
+- 0 failed.
 
-Failing scenarios:
+All scenarios pass, including the previously failing
+`http-header-validation / ServerRejectsMissingMethodHeader` check. The SDK
+enforces strict SEP-2243 standard-header validation on the stateless
+(SEP-2575) wire while still tolerating stateful requests from the TypeScript
+SDK client that omit `Mcp-Method`, so the historical upstream contradiction
+(conformance#323, typescript-sdk#2176) no longer produces a failure.
 
-| Scenario | Result | Root Cause |
-| --- | --- | --- |
-| `http-header-validation` | 11 passed, 1 failed | Conformance suite contradiction: test expects `Mcp-Method` required, but TypeScript SDK client doesn't send it |
-
-The single remaining failure (`ServerRejectsMissingMethodHeader`) is a **known
-upstream issue** — not a server bug. It cannot be resolved on the server side
-without breaking 32 other SDK-backed scenarios (the TypeScript SDK does not send
-`Mcp-Method`, so requiring it rejects all SDK client requests). Issues filed:
-
-- [conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323)
-- [typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176)
-
-**Resolution**: 109/1 is the expected final state until the TypeScript SDK
-implements SEP-2243 header support. No server-side workaround is appropriate.
-
-The previous input-required-result / MRTR failures now pass in the local
-all-suite run.
+Newly covered draft surface includes SEP-2575 stateless lifecycle,
+`subscriptions/listen` streaming with publish fan-out, SEP-2663 task
+methods with extension gating, SEP-2640 skills fixtures, `server/discover`
+`_meta.serverInfo` + `ttlMs`/`cacheScope` fields, and `-32020`/`-32021`/
+`-32022` error-code to HTTP-status mapping.
 
 ## Client Conformance
 
@@ -109,90 +100,59 @@ server URL.
 The default client harness counts only SDK-backed paths. Raw protocol probes are
 not counted as SDK coverage.
 
-Default auth/no-OpenSSL build command:
-
-```powershell
-npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite all --timeout 30000
-```
-
-Current summary:
-
-- 442 passed.
-- 1 failed.
-- 0 warnings.
-
-This build has `CXXMCP_AUTH_CRYPTO=NONE`, so
-`auth/client-credentials-jwt` is expected to remain failed because
-private_key_jwt signing is compiled only with the optional OpenSSL auth backend.
-
 OpenSSL/vcpkg build command:
 
 ```powershell
-cmake -S . -B build-auth-openssl -G Ninja -DCMAKE_SKIP_INSTALL_RULES=ON -DCXXMCP_ENABLE_AUTH=ON -DCXXMCP_ENABLE_HTTP=ON -DCXXMCP_AUTH_CRYPTO=OpenSSL -DCMAKE_TOOLCHAIN_FILE=C:\Users\cmx\repo\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows
-cmake --build build-auth-openssl --target cxxmcp_conformance_everything_client
-npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build-auth-openssl\cxxmcp_conformance_everything_client.exe" --suite all --timeout 30000
+cmake -S . -B build -G Ninja -DCXXMCP_ENABLE_AUTH=ON -DCXXMCP_ENABLE_HTTP=ON -DCXXMCP_AUTH_CRYPTO=OpenSSL -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows
+cmake --build build --target cxxmcp_conformance_everything_client
+node dist/index.js client --command "D:\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite all --timeout 30000
 ```
 
 OpenSSL current summary:
 
-- 448 passed.
+- 501 passed.
 - 0 failed.
 - 0 warnings.
 
 Auth status in the OpenSSL build:
 
-- Tier auth suite: 217 passed, 0 failed.
+- Tier auth suite: 227 passed, 0 failed, 0 warnings.
 - Back-compat auth: both 2025-03-26 scenarios passed.
-- Draft auth: resource mismatch, offline access, AS migration, ISS parameter,
-  and metadata issuer mismatch scenarios passed.
+- Draft auth: resource mismatch, offline access, AS migration (including
+  re-registration at the migrated authorization server), ISS parameter, and
+  metadata issuer mismatch scenarios passed.
 - Extension auth: `client-credentials-jwt`, `client-credentials-basic`, and
   `enterprise-managed-authorization` passed.
+- DPoP (RFC 9449): `auth/dpop` 12/12 and `auth/dpop-nonce` 14/14 —
+  proof-per-request, `Authorization: DPoP`, and AS/RS `DPoP-Nonce` retry.
+- `auth/wif-jwt-bearer`: 8/8.
+- The no-OpenSSL build does not support `private_key_jwt`, DPoP signing, or
+  the WIF grant — those scenarios are expected to report unsupported there.
 
 ### Client 2025-11-25 Suite
 
 Command:
 
 ```powershell
-npm start -- client --command "C:\Users\cmx\repo\cxxmcp-examples\build-auth-openssl\cxxmcp_conformance_everything_client.exe" --suite all --spec-version 2025-11-25 --timeout 30000
+node dist/index.js client --command "D:\repo\cxxmcp-examples\build\cxxmcp_conformance_everything_client.exe" --suite all --spec-version 2025-11-25 --timeout 30000
 ```
 
 Current summary:
 
-- 224 passed.
+- 247 passed.
 - 0 failed.
 - 0 warnings.
 
-OpenSSL current all passing scenarios/checks:
-
-| Scenario | Result |
-| --- | --- |
-| `initialize` | 1 passed, 0 failed |
-| `tools_call` | 1 passed, 0 failed |
-| `elicitation-sep1034-client-defaults` | 5 passed, 0 failed |
-| `request-metadata` | 7 passed, 0 failed |
-| `auth/*` tier/backcompat/draft/extension scenarios | all passed |
-| `sep-2322-client-request-state` | 5 passed, 0 failed |
-| `http-standard-headers` | 11 passed, 0 failed |
-| `http-custom-headers` | 18 passed, 0 failed |
-| `http-invalid-tool-headers` | 11 passed, 0 failed |
-| `json-schema-ref-no-deref` | 1 passed, 0 failed |
-| `sse-retry` | 3 passed, 0 failed |
-
 No failing client scenarios in the OpenSSL build.
-```
 
 ## Raw Protocol Probes
 
-No raw HTTP/JSON-RPC probes are currently counted as SDK client conformance.
-Previous raw probes for `request-metadata`, `sep-2322-client-request-state`,
-and `http-standard-headers` were removed from the default path. Current passes
-for `request-metadata`, `sep-2322-client-request-state`, and
-`http-standard-headers` use SDK transport/request APIs.
+No raw HTTP/JSON-RPC probes are counted as SDK client conformance.
 
 ## RMCP Reference Comparison
 
 RMCP saved audit files were found under
-`../MCPServer.cpp/reference/rmcp/conformance/results/`. The requested
+`../cxxmcp/reference/rmcp/conformance/results/`. The requested
 `../conformance/results/` directory does not exist locally.
 
 The saved RMCP reports are dated 2026-02-25 and use an older scoring shape:
@@ -203,7 +163,7 @@ The saved RMCP reports are dated 2026-02-25 and use an older scoring shape:
 - Final tier: Tier 3, blocked by triage, labels, stable release, documentation,
   and roadmap/versioning gaps.
 
-Current local RMCP binaries were also run against the same local conformance
+Current local RMCP binaries were last run against the same local conformance
 runner on 2026-05-29. The fair headline comparison uses `--suite all` on both
 server and client:
 
@@ -222,23 +182,16 @@ warnings.
 
 All-suite comparison:
 
-- Server all: C++ currently reports 109 passed and 1 failed versus RMCP 48
+- Server all: C++ currently reports 272 passed and 0 failed versus RMCP 48
   passed and 47 failed.
 - Client all: C++ produces a complete SDK-only summary. With the optional
-  OpenSSL auth backend enabled it reports 448 passed and 0 failed. RMCP
+  OpenSSL auth backend enabled it reports 501 passed and 0 failed. RMCP
   currently crashes the runner before an all-suite summary.
 
 ## Main SDK Gaps
 
-1. **Server `http-header-validation` (1 failure, upstream)**:
-   `ServerRejectsMissingMethodHeader` expects HTTP 400 when `Mcp-Method` header
-   is missing. Our C++ SDK client sends `Mcp-Method` correctly, but the
-   conformance runner's TypeScript SDK client (`@modelcontextprotocol/sdk`
-   v1.29.0) does not. Making `Mcp-Method` required breaks 32 SDK-backed
-   scenarios. This is a conformance suite contradiction, not a server bug.
-   Cannot be resolved server-side. Filed as
-   [conformance#323](https://github.com/modelcontextprotocol/conformance/issues/323)
-   and [typescript-sdk#2176](https://github.com/modelcontextprotocol/typescript-sdk/issues/2176).
-   **Expected to resolve upstream when TypeScript SDK implements SEP-2243.**
-2. Client private_key_jwt requires the optional OpenSSL auth backend; the
-   no-OpenSSL build deliberately reports that scenario unsupported.
+- Client `private_key_jwt`, DPoP, and WIF signing require the optional
+  OpenSSL auth backend; the no-OpenSSL build deliberately reports those
+  scenarios unsupported.
+- The previously tracked SEP-2243 `ServerRejectsMissingMethodHeader`
+  exception is resolved (see Server All Suite above).

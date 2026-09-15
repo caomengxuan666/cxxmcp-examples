@@ -128,3 +128,15 @@ if(TARGET cxxmcp::auth_openssl)
     target_compile_definitions(cxxmcp_conformance_everything_client
         PRIVATE CXXMCP_EXAMPLES_ENABLE_AUTH_OPENSSL=1)
 endif()
+
+# The client harness includes the bundled httplib header directly (needed by
+# the auth scenarios). httplib is header-only, so every TU that includes it
+# must be compiled with the same CPPHTTPLIB_* definitions as the SDK targets,
+# otherwise two different ClientImpl layouts end up linked into the same
+# binary (ODR violation) and member offsets diverge between the weak copies.
+# Linking the sdk's cpp_httplib interface target inherits both the include
+# directory and the compile definitions, keeping the TU in sync.
+if(TARGET cpp_httplib)
+    target_link_libraries(cxxmcp_conformance_everything_client
+        PRIVATE cpp_httplib)
+endif()
